@@ -1,49 +1,47 @@
-function DiffEvolution(f::Funnction, X::IntervalBox{N, T} ) where {N, T}
+function DiffEvolution(f::Funnction, X::IntervalBox{N, T}; maxiter = 30 ) where {N, T}
 
    n = length(X)
    np = 10*n
 
    Pop = []                          #Initialsing Population
-   ran = []
    FuncVal = []
    for i in 1:np
       indv = []
-      ranv = []
       for j in 1:n
          r = 1 - rand()
          x = X[j].lo + r*(X[j].hi - X[j].lo)
          appned!(indv, x)
-         append!(ranv, r)
       end
       append!(Pop, indv)
-      append!(ran, ranv)
       append!(FuncVal, f(indv...))
    end
 
-   while 1
+   for iter in 1:maxiter
+
       F = 2*rand()
       I = rand(1:n)
       CR = rand()
       PopNew = []
+
       for i in 1:np
-         u = generateRandom(1, np, i)         #To do: have to modify the strategy to choose u(base individual)
+
+         u = generateRandom(1, np, i)
          v = generateRandom(1, np, i, u)
-         w = generateRandom(1, np, i, u, v)
+         w = generateRandom(1, np, i, u, v)   # Choosing index of three different individuals, different from the index of that individual whose mutant vector is going to form.
+
          M = Pop[u] + F*(Pop[v] - Pop[w])
-         O = []
-         for j in 1:d
+         M = BoundEnsure(M, X)               # Mutation : Mutant Vector is created
+
+         for j in 1:d                        # Recombination or CrossOver :  Mutant vector is itself is modified by Crossover rate (CR)
             if j != I
-               if ran[i][j] <= CR
-                  append!(O,M[j])
-               else
-                  append!(O, Pop[i][j])
+               if rand() > CR
+                  M[j] = Pop[i][j]
                end
-            else
-               append!(O, M[j])
             end
          end
-         if f(O...) < f(Pop[i]...)
-            append!(PopNew, O)
+
+         if f(M...) < f(Pop[i]...)          # Selection : Best Indivual is selected among the Modified Mutant Individual and in the originl Individual
+            append!(PopNew, M)
          else
             append!(popNew,Pop[i])
          end
@@ -52,9 +50,10 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T} ) where {N, T}
       for i in 1:np
          Pop[i] = PopNew[i]
          FuncVal[i] = f(Pop[i]...)
-       end
-   end                                                #To do : Termination crieteria have to figure out
+      end
 
-   return min(FuncVal...)
+   end
+
+   return min(FuncVal...)                # best individual is output
 
 end

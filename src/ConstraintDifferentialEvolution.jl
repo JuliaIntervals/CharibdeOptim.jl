@@ -4,57 +4,53 @@ struct ConstraintCond{T}
 end
 
 
-function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{ConstraintCond{T}}) where {N, T}
+function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{ConstraintCond{T}}; maxiter = 30 ) where {N, T}
 
    n = length(X)
    np = 10*n
    nc = length(constraints)
 
    Pop = []                          #Initialsing Population
-   ran = []
    FuncVal = []
    for i in 1:np
       indv = []
-      ranv = []
       for j in 1:n
          r = 1 - rand()
          x = X[j].lo + r*(X[j].hi - X[j].lo)
          appned!(indv, x)
-         append!(ranv, r)
       end
       append!(Pop, indv)
-      append!(ran, ranv)
       append!(FuncVal, f(indv...))
    end
 
-   while 1
+   for iter in maxiter
+
       F = 2*rand()
       I = rand(1:n)
       CR = rand()
       PopNew = []
+
       for i in 1:np
-         u = generateRandom(1, np, i)         #To do: have to modify the strategy to choose u(base individual)
-         v = generateRandom(1, np, i, u)
-         w = generateRandom(1, np, i, u, v)
+
+         u = GenerateRandom(1, np, i)
+         v = GenerateRandom(1, np, i, u)
+         w = GenerateRandom(1, np, i, u, v)    # Choosing index of three different individuals, different from the index of that individual whose mutant vector is going to form.
 
          M = Pop[u] + F*(Pop[v] - Pop[w])
-         O = []
+         M = BoundEnsure(M, X)                 # Mutatation : Mutant Vector is created
 
-         for j in 1:d
+         for j in 1:d                          # Recombination or CrossOver :  Mutant vector is itself modified by Crossover rate (CR)
             if j != I
-               if ran[i][j] <= CR
-                  append!(O,M[j])
-               else
-                  append!(O, Pop[i][j])
+               if rand() > CR
+                  M[j] = Pop[i][j]
                end
-            else
-               append!(O, M[j])
             end
          end
 
-         C1, C2 =0, 0                          #Constraint Handeling
+         C1, C2 =0, 0                                # Selection : Best individual (among modified Mutant and Original individual) is being selected by their response toward Constraints
+
          for constraint in constraints
-            if constraint.f(O...) ∈ constraint.c:
+            if constraint.f(M...) ∈ constraint.c:
                C1 = C1 + 1
             end
             if constraint.f(Pop[i]...) ∈ constraint.c:
@@ -62,15 +58,15 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{C
             end
          end
 
-         if C1 == nc & C2 == nc :
-            if f(O...) < f(Pop[i]...)
-               append!(PopNew, O)
+         if C1, C2 == nc, nc :
+            if f(M...) < f(Pop[i]...)
+               append!(PopNew, M)
             else
-               append!(popNew,Pop[i])
+               append!(popNew, Pop[i])
             end
          else
             if C2 <= C1:
-               append!(Popnew, O)
+               append!(Popnew, M)
             else
                append!(popNew, Pop[i])
             end
@@ -80,8 +76,9 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{C
          Pop[i] = PopNew[i]
          FuncVal[i] = f(Pop[i]...)
       end
+
    end                                                    #To do : Termination crieteria have to figure out
 
    return min(FuncVal...)
-   
+
 end
