@@ -1,7 +1,14 @@
-function DiffEvolution(f::Funnction, X::IntervalBox{N, T} ) where {N, T}
+struct ConstraintCond{T}
+   f ::Operation
+   c ::Interval{T}
+end
+
+
+function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{ConstraintCond{T}}) where {N, T}
 
    n = length(X)
    np = 10*n
+   nc = length(constraints)
 
    Pop = []                          #Initialsing Population
    ran = []
@@ -29,8 +36,10 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T} ) where {N, T}
          u = generateRandom(1, np, i)         #To do: have to modify the strategy to choose u(base individual)
          v = generateRandom(1, np, i, u)
          w = generateRandom(1, np, i, u, v)
+
          M = Pop[u] + F*(Pop[v] - Pop[w])
          O = []
+
          for j in 1:d
             if j != I
                if ran[i][j] <= CR
@@ -42,19 +51,37 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T} ) where {N, T}
                append!(O, M[j])
             end
          end
-         if f(O...) < f(Pop[i]...)
-            append!(PopNew, O)
-         else
-            append!(popNew,Pop[i])
+
+         C1, C2 =0, 0                          #Constraint Handeling
+         for constraint in constraints
+            if constraint.f(O...) ∈ constraint.c:
+               C1 = C1 + 1
+            end
+            if constraint.f(Pop[i]...) ∈ constraint.c:
+               C2 = C2 + 1
+            end
          end
-      end
+
+         if C1 == nc & C2 == nc :
+            if f(O...) < f(Pop[i]...)
+               append!(PopNew, O)
+            else
+               append!(popNew,Pop[i])
+            end
+         else
+            if C2 <= C1:
+               append!(Popnew, O)
+            else
+               append!(popNew, Pop[i])
+            end
+         end
 
       for i in 1:np
          Pop[i] = PopNew[i]
          FuncVal[i] = f(Pop[i]...)
-       end
-   end                                                #To do : Termination crieteria have to figure out
+      end
+   end                                                    #To do : Termination crieteria have to figure out
 
    return min(FuncVal...)
-
+   
 end
