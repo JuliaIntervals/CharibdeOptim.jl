@@ -25,9 +25,9 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T}; maxiter = 30 ) where 
 
       for i in 1:np
 
-         u = generateRandom(1, np, i)
-         v = generateRandom(1, np, i, u)
-         w = generateRandom(1, np, i, u, v)   # Choosing index of three different individuals, different from the index of that individual whose mutant vector is going to form.
+         u = GenerateRandom(1, np, i)
+         v = GenerateRandom(1, np, i, u)
+         w = GenerateRandom(1, np, i, u, v)   # Choosing index of three different individuals, different from the index of that individual whose mutant vector is going to form.
 
          M = Pop[u] + F*(Pop[v] - Pop[w])
          M = BoundEnsure(M, X)               # Mutation : Mutant Vector is created
