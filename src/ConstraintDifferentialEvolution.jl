@@ -4,23 +4,16 @@ struct ConstraintCond{T}
 end
 
 
-function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{ConstraintCond{T}}; maxiter = 30 ) where {N, T}
+function DiffEvolution_min(f::Function, X::T, constraints::Vector{ConstraintCond{T}}; maxiter = 30 ) where{T}
 
    n = length(X)
    np = 10*n
    nc = length(constraints)
 
    Pop = []                          #Initialsing Population
-   FuncVal = []
    for i in 1:np
-      indv = []
-      for j in 1:n
-         r = 1 - rand()
-         x = X[j].lo + r*(X[j].hi - X[j].lo)
-         appned!(indv, x)
-      end
-      append!(Pop, indv)
-      append!(FuncVal, f(indv...))
+      indv = [X[j].lo + r*(X[j].hi - X[j].lo) for j in 1:n]
+      push!(Pop, indv)
    end
 
    for iter in maxiter
@@ -39,7 +32,7 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{C
          M = Pop[u] + F*(Pop[v] - Pop[w])
          M = BoundEnsure(M, X)                 # Mutatation : Mutant Vector is created
 
-         for j in 1:d                          # Recombination or CrossOver :  Mutant vector is itself modified by Crossover rate (CR)
+         for j in 1:n                          # Recombination or CrossOver :  Mutant vector is itself modified by Crossover rate (CR)
             if j != I
                if rand() > CR
                   M[j] = Pop[i][j]
@@ -50,35 +43,40 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T}, constraints::Vector{C
          C1, C2 =0, 0                                # Selection : Best individual (among modified Mutant and Original individual) is being selected by their response toward Constraints
 
          for constraint in constraints
-            if constraint.f(M...) ∈ constraint.c:
+            if constraint.f(M...) ∈ constraint.c
                C1 = C1 + 1
             end
-            if constraint.f(Pop[i]...) ∈ constraint.c:
+            if constraint.f(Pop[i]...) ∈ constraint.c
                C2 = C2 + 1
             end
          end
 
-         if C1, C2 == nc, nc :
+         if (C1, C2) == (nc, nc)
             if f(M...) < f(Pop[i]...)
-               append!(PopNew, M)
+               push!(PopNew, M)
             else
-               append!(popNew, Pop[i])
+               push!(popNew, Pop[i])
             end
          else
-            if C2 <= C1:
-               append!(Popnew, M)
+            if C2 <= C1
+               push!(Popnew, M)
             else
-               append!(popNew, Pop[i])
+               push!(popNew, Pop[i])
             end
          end
 
-      for i in 1:np
-         Pop[i] = PopNew[i]
-         FuncVal[i] = f(Pop[i]...)
+        if f(PopNew[i]...) < global_min
+           global_min = f(PopNew[i]...)
+           X_best = PopNew[i]
+        end
+
       end
+  end
+  return global_min, X_best
+end
 
-   end                                                    #To do : Termination crieteria have to figure out
 
-   return min(FuncVal...)
-
+function DiffEvolution_max(f::Function, X::T, constraints::Vector{ConstraintCond{T}}, maxiter = 30 ) where{T}
+   maxima, maximiser = DiffEvolution_min(f, X, constraints, maxiter)
+   return -maxima, maximiser
 end

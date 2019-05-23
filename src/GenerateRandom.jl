@@ -7,4 +7,5 @@ function GenerateRandom(min, max, x...)
       return GenerateRandom(min, max, x...)
    else
       return r
-end
+   end
+end   

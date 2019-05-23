@@ -1,20 +1,16 @@
-function DiffEvolution(f::Funnction, X::IntervalBox{N, T}; maxiter = 30 ) where {N, T}
+function DiffEvolution_min(f::Function, X::T, maxiter = 30 ) where {T}
 
    n = length(X)
    np = 10*n
 
    Pop = []                          #Initialsing Population
-   FuncVal = []
    for i in 1:np
-      indv = []
-      for j in 1:n
-         r = 1 - rand()
-         x = X[j].lo + r*(X[j].hi - X[j].lo)
-         appned!(indv, x)
-      end
-      append!(Pop, indv)
-      append!(FuncVal, f(indv...))
+      indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:n]
+      push!(Pop, indv)
    end
+
+   global_min = Inf
+   X_best = last(Pop)
 
    for iter in 1:maxiter
 
@@ -32,7 +28,7 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T}; maxiter = 30 ) where 
          M = Pop[u] + F*(Pop[v] - Pop[w])
          M = BoundEnsure(M, X)               # Mutation : Mutant Vector is created
 
-         for j in 1:d                        # Recombination or CrossOver :  Mutant vector is itself is modified by Crossover rate (CR)
+         for j in 1:n                        # Recombination or CrossOver :  Mutant vector is itself is modified by Crossover rate (CR)
             if j != I
                if rand() > CR
                   M[j] = Pop[i][j]
@@ -40,20 +36,25 @@ function DiffEvolution(f::Funnction, X::IntervalBox{N, T}; maxiter = 30 ) where 
             end
          end
 
-         if f(M...) < f(Pop[i]...)          # Selection : Best Indivual is selected among the Modified Mutant Individual and in the originl Individual
-            append!(PopNew, M)
+         if f(M...) <= f(Pop[i]...)          # Selection : Best Indivual is selected among the Modified Mutant Individual and in the originl Individual
+            push!(PopNew, M)
          else
-            append!(popNew,Pop[i])
+            push!(PopNew, Pop[i])
          end
-      end
 
-      for i in 1:np
-         Pop[i] = PopNew[i]
-         FuncVal[i] = f(Pop[i]...)
+         if f(PopNew[i]...) < global_min
+            global_min = f(PopNew[i]...)
+            X_best = PopNew[i]
+         end
       end
 
    end
 
-   return min(FuncVal...)                # best individual is output
+   return global_min, X_best                # best individual is output
 
+end
+
+function DiffEvolution_max(f::Function, X::T, maxiter = 30) where {T}
+    maxima, maximiser=  DiffEvolution_min(x -> -f(x), X, maxiter)
+    return -maxima, maximiser
 end
