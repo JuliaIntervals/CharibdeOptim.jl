@@ -29,8 +29,7 @@ function DiffEvolution_min(f::Function, X::T, constraints::Vector{ConstraintCond
          v = GenerateRandom(1, np, i, u)
          w = GenerateRandom(1, np, i, u, v)    # Choosing index of three different individuals, different from the index of that individual whose mutant vector is going to form.
 
-         M = Pop[u] + F*(Pop[v] - Pop[w])
-         M = BoundEnsure(M, X)                 # Mutatation : Mutant Vector is created
+         M = BoundEnsure(Pop[u] + F*(Pop[v] - Pop[w]), Pop[u], X)                # Mutatation : Mutant Vector is created
 
          for j in 1:n                          # Recombination or CrossOver :  Mutant vector is itself modified by Crossover rate (CR)
             if j != I
@@ -69,8 +68,8 @@ function DiffEvolution_min(f::Function, X::T, constraints::Vector{ConstraintCond
            global_min = f(PopNew[i]...)
            X_best = PopNew[i]
         end
-
       end
+      Pop = PopNew
   end
   return global_min, X_best
 end
