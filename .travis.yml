@@ -1,0 +1,24 @@
+language: julia
+
+os:
+  - linux
+  - osx
+
+julia:
+  - 0.7
+  - 1.0
+  - nightly
+
+notifications:
+  email: false
+
+matrix:
+  allow_failures:
+    - julia: 0.7
+    - julia: nightly
+
+after_success:
+# build documentation
+  - julia -e 'cd(Pkg.dir("Charibde"));
+# push coverage results to Codecov
+  - julia -e 'cd(Pkg.dir("Charibde")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
