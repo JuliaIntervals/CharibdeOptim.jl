@@ -1,4 +1,4 @@
-function IBC_min(f, X::T ; structure = HeapedVectors.HeapedVector, tol=1e-3 ) where {T}
+function IBC_min(f::Function, X::T ; structure = HeapedVectors.HeapedVector, tol=1e-3 ) where {T}
 
     # list of boxes with corresponding lower bound, arranged according to selected structure :
     working = structure([(X, ∞)], x->x[2])
