@@ -2,7 +2,7 @@
  Because of this, we created a separate function i.e BoundEnsure that checks and corrects for this. In the event
  that one of these rogue points are found, we’ll simply move it to the nearest boundary """
 
-function BoundEnsure(M, U, X)
+function bound_ensure(M::Array{Float64,1}, U::Array{Float64,1}, X::T) where {T}
 
     for i in 1:length(X)
       if M[i] < X[i].lo

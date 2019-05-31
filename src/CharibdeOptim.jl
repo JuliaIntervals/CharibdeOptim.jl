@@ -1,7 +1,7 @@
-module Charibde
+module CharibdeOptim
 
 export ConstraintCond
-export IBC_min, IBC_max, DiffEvolution_min, DiffEvolution_max
+export ibc_minimise, ibc_maximise, diffevol_minimise, diffevol_maximise
 
 using IntervalArithmetic
 using IntervalOptimisation: HeapedVectors, SortedVectors, StrategyBase
@@ -15,7 +15,5 @@ include("DiffrentialEvolution.jl")
 include("ConstraintDifferentialEvolution.jl")
 include("BoundEnsure.jl")
 include("GenerateRandom.jl")
-
-
 
 end
