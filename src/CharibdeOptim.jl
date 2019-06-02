@@ -4,7 +4,7 @@ export ConstraintCond
 export ibc_minimise, ibc_maximise, diffevol_minimise, diffevol_maximise
 
 using IntervalArithmetic
-using IntervalOptimisation: HeapedVectors, SortedVectors, StrategyBase
+using IntervalOptimisation: HeapedVector, SortedVector, filter_elements!
 using IntervalConstraintProgramming
 using ModelingToolkit
 
