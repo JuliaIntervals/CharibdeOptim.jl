@@ -1,5 +1,11 @@
 name = "CharibdeOptim"
-uuid = "ef1b286e-4b72-531f-b34e-7a00db643e4c"
+uuid = "be8f459e-2180-59b5-a986-74dabacdd8e3"
+
+[compat]
+IntervalArithmetic = "≥ 0.15.0"
+IntervalOptimisation = "≥ 0.3.0"
+ModelingToolkit = "≥ 0.2.0"
+julia = "≥ 1.1.0"
 
 [deps]
 IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
