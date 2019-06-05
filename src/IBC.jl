@@ -1,4 +1,4 @@
-function IBC_min(f::Function, X::T ; structure = HeapedVectors.HeapedVector, tol=1e-3 ) where {T}
+function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) where {T}
 
     # list of boxes with corresponding lower bound, arranged according to selected structure :
     working = structure([(X, ∞)], x->x[2])
@@ -27,7 +27,7 @@ function IBC_min(f::Function, X::T ; structure = HeapedVectors.HeapedVector, tol
         end
 
         # Remove all boxes whose lower bound is greater than the current one:
-        StrategyBase.filter_elements!(working , (X, global_min) )
+        filter_elements!(working , (X, global_min) )
 
         if diam(X) < tol
             push!(minimizers, X)
@@ -46,7 +46,7 @@ function IBC_min(f::Function, X::T ; structure = HeapedVectors.HeapedVector, tol
 end
 
 
-function IBC_max(f, X::T; structure = HeapedVector, tol=1e-3 ) where {T}
+function ibc_maximise(f, X::T; structure = HeapedVector, tol=1e-3 ) where {T}
     bound, minimizers = minimise(x -> -f(x), X, structure, tol)
     return -bound, minimizers
 end
