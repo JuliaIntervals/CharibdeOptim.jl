@@ -19,7 +19,7 @@ function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) w
         end
 
         # find candidate for upper bound of global minimum by just evaluating a point in the interval:
-        m = sup(f(Interval.(mid.(X))))   # evaluate at midpoint of current interval
+        m = f(mid(X)...)   # evaluate at midpoint of current interval
 
         if m < global_min
             global_min = m
@@ -33,14 +33,17 @@ function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) w
             push!(minimizers, X)
         else
             X1, X2 = bisect(X)
-            push!( working, (X1, inf(f(X1))) )
-            push!( working, (X2, inf(f(X2))) )
+            push!( working, (X1, inf(f(X1...))) )
+            push!( working, (X2, inf(f(X2...))) )
             num_bisections += 1
         end
 
     end
 
-    lower_bound = minimum(inf.(f.(minimizers)))
+    lower_bound = inf(f(minimizers[1]...))
+    for i in 2:length(minimizers)
+        lower_bound = min(inf(f(minimizers[i]...)), lower_bound)
+    end
 
     return Interval(lower_bound, global_min), minimizers
 end

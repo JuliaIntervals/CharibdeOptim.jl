@@ -8,6 +8,7 @@ ModelingToolkit = "≥ 0.2.0"
 julia = "≥ 1.1.0"
 
 [deps]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
 IntervalConstraintProgramming = "138f1668-1576-5ad7-91b9-7425abbf3153"
 IntervalOptimisation = "c7c68f13-a4a2-5b9a-b424-07d005f8d9d2"
