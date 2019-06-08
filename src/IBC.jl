@@ -1,7 +1,7 @@
 function ibc_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl; structure = SortedVector, tol=1e-3 ) where {T}
 
     # list of boxes with corresponding lower bound, arranged according to selected structure :
-    working = structure([(X, ∞)], x->x[2])
+    working = structure([(X, inf(f(X...)))], x->x[2])
     minimizers = T[]
     global_min = ∞  # upper bound
 
@@ -47,11 +47,11 @@ function ibc_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl; structure = So
         lower_bound = min(inf(f(minimizers[i]...)), lower_bound)
     end
 
-    return Interval(lower_bound, global_min), minimizers
+    return Interval(lower_bound,global_min), minimizers
 end
 
 
-function ibc_maximise(f, X::T; structure = HeapedVector, tol=1e-3 ) where {T}
-    bound, minimizers = minimise(x -> -f(x), X, structure, tol)
+function ibc_maximise(f, X::T, ibc_chnl, diffevol_chnl; structure = SortedVector, tol=1e-3 ) where {T}
+    bound, minimizers = ibc_minimise(x -> -f(x), X, ibc_chnl, diffevol_chnl, structure, tol)
     return -bound, minimizers
 end

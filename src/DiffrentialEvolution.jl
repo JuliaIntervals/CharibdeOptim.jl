@@ -65,7 +65,7 @@ function diffevol_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl, maxiter =
    return global_min, x_best                # best individual is output
 end
 
-function diffevol_maximise(f::Function, X::T, maxiter = 30) where {T}
-    maxima, maximiser=  diffevol_minimise(x -> -f(x), X, maxiter)
+function diffevol_maximise(f::Function, X::T, ibc_chnl, diffevol_chnl, maxiter = 30) where {T}
+    maxima, maximiser=  diffevol_minimise(x -> -f(x), X, ibc_chnl, diffevol_chnl, maxiter)
     return -maxima, maximiser
 end
