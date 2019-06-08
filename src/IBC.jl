@@ -1,4 +1,4 @@
-function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) where {T}
+function ibc_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl; structure = SortedVector, tol=1e-3 ) where {T}
 
     # list of boxes with corresponding lower bound, arranged according to selected structure :
     working = structure([(X, ∞)], x->x[2])
@@ -9,8 +9,10 @@ function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) w
 
     while !isempty(working)
 
-        #fromDiff = take!(IBC_chnl)
-        #global_min = min(fromDiff[2], global_min)
+        if isready(ibc_chnl)
+            from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
+            global_min = min(from_diff[2], global_min)
+        end
 
         (X, X_min) = popfirst!(working)
 
@@ -23,7 +25,7 @@ function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) w
 
         if m < global_min
             global_min = m
-        #    put!(DiffEvol_chnl, (mid(X), global_min))   # sending best individual to DiffEvaluation
+            put!(diffevol_chnl, (mid(X), global_min)) # sending best individual to DiffEvaluation
         end
 
         # Remove all boxes whose lower bound is greater than the current one:

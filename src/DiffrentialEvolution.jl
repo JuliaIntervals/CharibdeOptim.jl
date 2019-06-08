@@ -1,4 +1,4 @@
-function diffevol_minimise(f::Function, X::T, maxiter = 30 ) where {T}
+function diffevol_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl, maxiter = 30 ) where {T}
 
    n = length(X)
    np = 10*n
@@ -18,6 +18,15 @@ function diffevol_minimise(f::Function, X::T, maxiter = 30 ) where {T}
       ind = rand(1:n)
       cr = rand()
       pop_new = Array{Float64,1}[]
+
+      temp = global_min
+
+      if isready(diffevol_chnl)
+         from_ibc = take!(diffevol_chnl)  #Receiveing best individual from diffevol_minimise
+         (x_best, temp) = from_ibc
+         push!(pop, x_best)
+         np = np + 1
+      end
 
       for i in 1:np
 
@@ -46,12 +55,17 @@ function diffevol_minimise(f::Function, X::T, maxiter = 30 ) where {T}
             x_best = pop_new[i]
          end
       end
+
+      if global_min < temp
+         put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min))    #sending the best individual to ibc_minimise
+      end
+
       pop = pop_new
    end
    return global_min, x_best                # best individual is output
 end
 
 function diffevol_maximise(f::Function, X::T, maxiter = 30) where {T}
-    maxima, maximiser=  DiffEvolution_min(x -> -f(x), X, maxiter)
+    maxima, maximiser=  diffevol_minimise(x -> -f(x), X, maxiter)
     return -maxima, maximiser
 end
