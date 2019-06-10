@@ -1,9 +1,9 @@
-function diffevol_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl, maxiter = 30 ) where {T}
+function diffevol_minimise(f::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(100)), diffevol_chnl = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(0)), maxiter = 30 ) where {T}
 
    n = length(X)
    np = 10*n
 
-   pop = Array{Float64,1}[]                          #Initialsing Population
+   pop = Vector{Float64}[]                          #Initialsing Population
    for i in 1:np
       indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:n]
       push!(pop, indv)
@@ -17,7 +17,7 @@ function diffevol_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl, maxiter =
       fac = 2*rand()
       ind = rand(1:n)
       cr = rand()
-      pop_new = Array{Float64,1}[]
+      pop_new = Vector{Float64}[]
 
       temp = global_min
 
