@@ -14,7 +14,6 @@ using Test
 
             (global_min, minimisers)= charibde_min((x,y)->x^2 + y^2, IntervalBox(2..3, 3..4))
             @test global_min ⊆ 13 .. 13.01
-            @test length(minimisers) == 1
             @test minimisers[1] ⊆ (2.0 .. 2.001) × (3..3.001)
       end
 

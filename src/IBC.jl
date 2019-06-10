@@ -1,7 +1,9 @@
-function ibc_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl; structure = SortedVector, tol=1e-3 ) where {T}
+function ibc_minimise(g::Function, X::T, ibc_chnl, diffevol_chnl; structure = SortedVector, tol=1e-3 ) where {T}
 
     # list of boxes with corresponding lower bound, arranged according to selected structure :
-    working = structure([(X, inf(f(X...)))], x->x[2])
+    f = X -> g(X...)
+
+    working = structure([(X, inf(f(X)))], x->x[2])
     minimizers = T[]
     global_min = ∞  # upper bound
 
@@ -21,7 +23,7 @@ function ibc_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl; structure = So
         end
 
         # find candidate for upper bound of global minimum by just evaluating a point in the interval:
-        m = f(mid(X)...)   # evaluate at midpoint of current interval
+        m = sup(f(Interval.(mid.(X))))   # evaluate at midpoint of current interval
 
         if m < global_min
             global_min = m
@@ -35,23 +37,14 @@ function ibc_minimise(f::Function, X::T, ibc_chnl, diffevol_chnl; structure = So
             push!(minimizers, X)
         else
             X1, X2 = bisect(X)
-            push!( working, (X1, inf(f(X1...))) )
-            push!( working, (X2, inf(f(X2...))) )
+            push!( working, (X1, inf(f(X1))) )
+            push!( working, (X2, inf(f(X2))) )
             num_bisections += 1
         end
 
     end
 
-    lower_bound = inf(f(minimizers[1]...))
-    for i in 2:length(minimizers)
-        lower_bound = min(inf(f(minimizers[i]...)), lower_bound)
-    end
+    lower_bound = minimum(inf.(f.(minimizers)))
 
     return Interval(lower_bound,global_min), minimizers
-end
-
-
-function ibc_maximise(f, X::T, ibc_chnl, diffevol_chnl; structure = SortedVector, tol=1e-3 ) where {T}
-    bound, minimizers = ibc_minimise(x -> -f(x), X, ibc_chnl, diffevol_chnl, structure, tol)
-    return -bound, minimizers
 end
