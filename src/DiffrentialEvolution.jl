@@ -1,4 +1,4 @@
-function diffevol_minimise(f::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(100)), diffevol_chnl = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(0)), maxiter = 30 ) where {T}
+function diffevol_minimise(f::Function, X::T; ibc_chnl = close(RemoteChannel(()->Channel{Tuple{T, Float64}}(0))), diffevol_chnl = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(0)), maxiter = 30 ) where {T}
 
    n = length(X)
    np = 10*n
@@ -57,7 +57,7 @@ function diffevol_minimise(f::Function, X::T; ibc_chnl = RemoteChannel(()->Chann
       end
 
       if global_min < temp
-         put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min))    #sending the best individual to ibc_minimise
+         if typeof(ibc_chnl) != Nothing put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min)) end   #sending the best individual to ibc_minimise
       end
 
       pop = pop_new
