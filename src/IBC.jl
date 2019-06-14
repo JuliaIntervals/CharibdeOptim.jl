@@ -1,7 +1,9 @@
-function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) where {T}
+function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(0)), diffevol_chnl = close(RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(0))), structure = SortedVector, tol=1e-3 ) where {T}
 
     # list of boxes with corresponding lower bound, arranged according to selected structure :
-    working = structure([(X, ∞)], x->x[2])
+    f = X -> g(X...)
+
+    working = structure([(X, inf(f(X)))], x->x[2])
     minimizers = T[]
     global_min = ∞  # upper bound
 
@@ -9,8 +11,10 @@ function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) w
 
     while !isempty(working)
 
-        #fromDiff = take!(IBC_chnl)
-        #global_min = min(fromDiff[2], global_min)
+        if isready(ibc_chnl)
+            from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
+            global_min = min(from_diff[2], global_min)
+        end
 
         (X, X_min) = popfirst!(working)
 
@@ -23,7 +27,7 @@ function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) w
 
         if m < global_min
             global_min = m
-        #    put!(DiffEvol_chnl, (mid(X), global_min))   # sending best individual to DiffEvaluation
+            if typeof(diffevol_chnl) != Nothing put!(diffevol_chnl, (Vector{Float64}(mid(X)), global_min)) end  # sending best individual to DiffEvaluation
         end
 
         # Remove all boxes whose lower bound is greater than the current one:
@@ -42,11 +46,5 @@ function ibc_minimise(f::Function, X::T ; structure = SortedVector, tol=1e-3 ) w
 
     lower_bound = minimum(inf.(f.(minimizers)))
 
-    return Interval(lower_bound, global_min), minimizers
-end
-
-
-function ibc_maximise(f, X::T; structure = HeapedVector, tol=1e-3 ) where {T}
-    bound, minimizers = minimise(x -> -f(x), X, structure, tol)
-    return -bound, minimizers
+    return Interval(lower_bound,global_min), minimizers
 end
