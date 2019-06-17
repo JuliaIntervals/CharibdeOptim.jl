@@ -20,7 +20,7 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
         (X, X_min) = popfirst!(working)
 
         A = -∞..global_min
-        X = C(A, X)                        # Contracting the box by constraint f(X) < globla_min
+        X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
         X_min = inf(f(X))
 
         if X_min > global_min    # X_min == inf(f(X))

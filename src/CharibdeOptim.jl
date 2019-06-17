@@ -9,7 +9,7 @@ using IntervalOptimisation: HeapedVector, SortedVector, filter_elements!
 using IntervalConstraintProgramming
 using ModelingToolkit
 
-import Base.push!
+import Base: invokelatest, push!
 
 include("IBC.jl")
 include("DiffrentialEvolution.jl")
