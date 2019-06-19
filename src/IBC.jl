@@ -1,9 +1,10 @@
 function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(0)), diffevol_chnl = close(RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(0))), structure = SortedVector, tol=1e-3 ) where {T}
 
-    # list of boxes with corresponding lower bound, arranged according to selected structure :
+    vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
+    C = Contractor(vars, g)
     f = X -> g(X...)
 
-    working = structure([(X, inf(f(X)))], x->x[2])
+    working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
     minimizers = T[]
     global_min = ∞  # upper bound
 
@@ -17,6 +18,10 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
         end
 
         (X, X_min) = popfirst!(working)
+
+        A = -∞..global_min
+        X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
+        X_min = inf(f(X))
 
         if X_min > global_min    # X_min == inf(f(X))
             continue
