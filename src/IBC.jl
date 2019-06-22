@@ -1,3 +1,9 @@
+mutable struct Information
+    de_to_ibc::Int
+    ibc_to_de::Int
+    iterations::Int
+end
+
 function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where {T}
 
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
@@ -8,13 +14,15 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
     minimizers = T[]
     global_min = ∞  # upper bound
 
+    info = Information(0, 0, 0)
     num_bisections = 0
-    iter = 0
+
     while !isempty(working)
 
         if isready(ibc_chnl)
             from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
             global_min = min(from_diff[2], global_min)
+            info.de_to_ibc = info.de_to_ibc + 1
         end
         (X, X_min) = popfirst!(working)
 
@@ -31,7 +39,10 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
 
         if m < global_min
             global_min = m
-            if diffevol_chnl != Nothing put!(diffevol_chnl, (Vector{Float64}(mid(X)), global_min)) end  # sending best individual to DiffEvaluation
+            if diffevol_chnl != Nothing
+                put!(diffevol_chnl, (Vector{Float64}(mid(X)), global_min))
+                info.ibc_to_de = info.ibc_to_de + 1
+            end  # sending best individual to DiffEvaluation
         end
 
         # Remove all boxes whose lower bound is greater than the current one:
@@ -45,7 +56,7 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
             push!( working, (X2, inf(f(X2))) )
             num_bisections += 1
         end
-        iter= iter + 1
+        info.iterations= info.iterations + 1
     end
 
     if diffevol_chnl != Nothing
@@ -63,6 +74,10 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
 
     lower_bound = minimum(inf.(f.(minimizers)))
 
-    return Interval(lower_bound,global_min), minimizers
-    #return (global_min, x_best)
+    if (info.ibc_to_de, info.de_to_ibc) == (0, 0)
+        return Interval(lower_bound,global_min), minimizers
+    else
+        return Interval(lower_bound,global_min), minimizers, info
+    end         
+
 end
