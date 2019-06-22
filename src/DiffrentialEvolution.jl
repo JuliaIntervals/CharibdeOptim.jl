@@ -1,4 +1,4 @@
-function diffevol_minimise(f::Function, X::T; ibc_chnl::RemoteChannel{Channel{Tuple{T,Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{Array{Float64,1},Float64}}} ) where {T}
+function diffevol_minimise(f::Function, X::T, ibc_chnl::RemoteChannel{Channel{Tuple{T,Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{Array{Float64,1},Float64}}} ) where {T}
 
    n = length(X)
    np = 10*n
