@@ -1,4 +1,4 @@
-function diffevol_minimise(f::Function, X::T; ibc_chnl = close(RemoteChannel(()->Channel{Tuple{T, Float64}}(0))), diffevol_chnl = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(0)), maxiter = 30 ) where {T}
+function diffevol_minimise(f::Function, X::T, ibc_chnl::RemoteChannel{Channel{Tuple{T,Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{Array{Float64,1},Float64}}} ) where {T}
 
    n = length(X)
    np = 10*n
@@ -12,7 +12,7 @@ function diffevol_minimise(f::Function, X::T; ibc_chnl = close(RemoteChannel(()-
    global_min = Inf
    x_best = last(pop)
 
-   for iter in 1:maxiter
+   while true
 
       fac = 2*rand()
       ind = rand(1:n)
@@ -24,10 +24,12 @@ function diffevol_minimise(f::Function, X::T; ibc_chnl = close(RemoteChannel(()-
       if isready(diffevol_chnl)
          from_ibc = take!(diffevol_chnl)  #Receiveing best individual from diffevol_minimise
          (x_best, temp) = from_ibc
+         if from_ibc[2] == Inf
+            break
+         end
          push!(pop, x_best)
          np = np + 1
       end
-
       for i in 1:np
 
          u = generate_random(1, np, i)
@@ -57,10 +59,10 @@ function diffevol_minimise(f::Function, X::T; ibc_chnl = close(RemoteChannel(()-
       end
 
       if global_min < temp
-         if typeof(ibc_chnl) != Nothing put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min)) end   #sending the best individual to ibc_minimise
+         put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min))   #sending the best individual to ibc_minimise
       end
 
       pop = pop_new
    end
-   return global_min, x_best                # best individual is output
+   return
 end
