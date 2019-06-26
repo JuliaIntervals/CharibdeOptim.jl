@@ -22,9 +22,8 @@ function diffevol_minimise(f::Function, X::T, ibc_chnl::RemoteChannel{Channel{Tu
       temp = global_min
 
       if isready(diffevol_chnl)
-         from_ibc = take!(diffevol_chnl)  #Receiveing best individual from diffevol_minimise
-         (x_best, temp) = from_ibc
-         if from_ibc[2] == Inf
+         (x_best, temp) = take!(diffevol_chnl)  # Receiveing best individual from diffevol_minimise
+         if temp == Inf
             break
          end
          push!(pop, x_best)

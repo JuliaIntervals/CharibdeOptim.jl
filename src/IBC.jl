@@ -8,7 +8,7 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
 
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
     C = Contractor(vars, g)
-    f = X -> g(X...)
+    f = X->g(X...)
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
     minimizers = T[]
@@ -78,6 +78,6 @@ function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tu
         return Interval(lower_bound,global_min), minimizers
     else
         return Interval(lower_bound,global_min), minimizers, info
-    end         
+    end
 
 end
