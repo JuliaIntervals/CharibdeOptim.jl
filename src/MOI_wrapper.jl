@@ -38,6 +38,7 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 MOI.supports_constraint(::Optimizer, ::Type{MOI.ScalarAffineFunction{Float64}}, ::Type{MOI.Interval{Float64}}) = true
 
 
+
 MOI.get(model::Optimizer, ::MOI.NumberOfVariables) = length(model.variable_info)
 
 function MOI.get(model::Optimizer, ::MOI.ListOfVariableIndices)

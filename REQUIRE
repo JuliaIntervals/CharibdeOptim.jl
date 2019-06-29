@@ -5,3 +5,4 @@ IntervalOptimisation 0.3
 ModelingToolkit 0.2
 IntervalConstraintProgramming
 Distributed
+MathOptInterface

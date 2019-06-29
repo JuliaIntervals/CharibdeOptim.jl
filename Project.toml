@@ -12,10 +12,12 @@ Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
 IntervalConstraintProgramming = "138f1668-1576-5ad7-91b9-7425abbf3153"
 IntervalOptimisation = "c7c68f13-a4a2-5b9a-b424-07d005f8d9d2"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
 
 [extras]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "Distributed"]
