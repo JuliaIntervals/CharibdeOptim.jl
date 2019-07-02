@@ -3,6 +3,7 @@ addprocs(2)
 @everywhere using CharibdeOptim
 @everywhere using IntervalArithmetic
 using Test
+using JuMP
 
 @testset "CharibdeOptim tests " begin
 
@@ -21,5 +22,14 @@ using Test
             @test global_min ⊆ 13 .. 13.01
             @test minimisers[1] ⊆ (2.0 .. 2.001) × (3..3.001)
       end
+
+      @testset "JuMP syntax" begin
+            model = Model(with_optimizer(CharibdeOptim.Optimizer))
+            @variable(model, 1<=x<=2)
+            @variable(model, 1<=y<=2)
+            @NLobjective(model, Min, x^2+y^2)
+            optimize!(model)
+            @test JuMP.objective_value(model) == 2.0
+      end      
 
 end
