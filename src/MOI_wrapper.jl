@@ -24,6 +24,8 @@ end
 
 struct EmptyNLPEvaluator <: MOI.AbstractNLPEvaluator end
 
+MOI.eval_objective(::EmptyNLPEvaluator, x) = NaN
+
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
 Optimizer() = Optimizer(nothing, empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing)
@@ -35,9 +37,9 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{MOI.SingleVariable}) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
-MOI.supports_constraint(::Optimizer, ::Type{MOI.ScalarAffineFunction{Float64}}, ::Type{MOI.Interval{Float64}}) = true
-
-
+MOI.supports_constraint(::Optimizer, ::Type{MOI.SingleVariable}, ::Type{MOI.Interval{Float64}}) = true
+MOI.supports_constraint(::Optimizer, ::Type{MOI.SingleVariable}, ::Type{MOI.GreaterThan{Float64}}) = true
+MOI.supports_constraint(::Optimizer, ::Type{MOI.SingleVariable}, ::Type{MOI.LessThan{Float64}}) = true
 
 MOI.get(model::Optimizer, ::MOI.NumberOfVariables) = length(model.variable_info)
 
@@ -56,19 +58,19 @@ function MOI.set(model::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     return
 end
 
-function MOI.set(model::Optimizer, ::MOI.ObjectiveFunction,func::Union{MOI.SingleVariable, MOI.ScalarAffineFunction,
-                             MOI.ScalarQuadraticFunction})
+function MOI.set(model::Optimizer, ::MOI.ObjectiveFunction{F}, func::F) where {F <: Union{MOI.SingleVariable, MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction}
     model.objective = func
     return
 end
 
 function MOI.is_empty(model::Optimizer)
-    return isempty(model.variable_info) && model.sense == MOI.FEASIBILITY_SENSE
+    return isempty(model.variable_info) && model.nlp_data.evaluator isa EmptyNLPEvaluator && model.sense == MOI.FEASIBILITY_SENSE
 end
 
 function MOI.empty!(model::Optimizer)
     model.result = nothing
     empty!(model.variable_info)
+    model.nlp_data = empty_nlp_data()
     model.sense = MOI.FEASIBILITY_SENSE
     model.objective = nothing
 end
@@ -77,8 +79,22 @@ function MOI.add_constraint(model::Optimizer, var::MOI.SingleVariable, bound::MO
     vi = var.variable
     model.variable_info[vi.value].lower_bound = bound.lower
     model.variable_info[vi.value].upper_bound = bound.upper
+    return MOI.ConstraintIndex{MOI.SingleVariable, MOI.Interval}(vi.value)
+end
+
+function MOI.add_constraint(model::Optimizer, var::MOI.SingleVariable, hi::MOI.LessThan{Float64})
+    vi = var.variable
+    model.variable_info[vi.value].upper_bound = hi.upper
     return MOI.ConstraintIndex{MOI.SingleVariable, MOI.LessThan{Float64}}(vi.value)
 end
+
+function MOI.add_constraint(model::Optimizer, var::MOI.SingleVariable, low::MOI.GreaterThan{Float64})
+    vi = var.variable
+    model.variable_info[vi.value].lower_bound = low.lower
+    return MOI.ConstraintIndex{MOI.SingleVariable, MOI.GreaterThan{Float64}}(vi.value)
+end
+
+
 
 function MOI.add_variable(model::Optimizer)
     push!(model.variable_info, VariableInfo())
@@ -137,7 +153,8 @@ end
 
 function MOI.optimize!(model::Optimizer)
 
-    obj_func(X...) = eval_objective(model, X)
+    MOI.initialize(model.nlp_data.evaluator, Symbol[])
+    obj_func(x...) = eval_objective(model, x)
     X = Interval[]
 
     for var in model.variable_info
@@ -153,4 +170,20 @@ function MOI.optimize!(model::Optimizer)
         error("Min or Max Sense is not set")
     end
     return
+end
+
+
+function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
+    if model.result == nothing
+        return MOI.OPTIMIZE_NOT_CALLED
+    else
+        return MOI.LOCALLY_SOLVED
+    end
+end
+
+function MOI.get(model::Optimizer, ::MOI.ObjectiveValue)
+    if model.result === nothing
+        error("ObjectiveValue not available.")
+    end
+    return model.result[1].lo
 end
