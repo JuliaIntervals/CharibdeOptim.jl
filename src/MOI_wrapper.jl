@@ -137,29 +137,42 @@ function eval_function(quad::MOI.ScalarQuadraticFunction, x)
     return function_value
 end
 
-function eval_objective(model::Optimizer, x)
-    # The order of the conditions is important. NLP objectives override regular
-    # objectives.
-    if model.nlp_data.has_objective
-        expr = MOI.objective_expr(model.nlp_data.evaluator)
-        return invokelatest(eval(:((x) -> $(expr))), x)
+
+function substitute_variables(expr::Expr)
+    if expr.head == :ref && length(expr.args) == 2 && expr.args[1] == :x
+        return :(x[$(expr.args[2].value)])
+    else
+        for (index, arg) in enumerate(expr.args)
+            expr.args[index] = substitute_variables(arg)
+        end
+    end
+    return expr
+end
+substitute_variables(arg) = arg
+
+function eval_objective(model::Optimizer, eval_expr::Union{Function, Nothing}, x)
+    if eval_expr !== nothing
+        return invokelatest(eval_expr, x)
     elseif model.objective !== nothing
         return eval_function(model.objective, x)
     else
-        # No objective function set. This could happen with FEASIBILITY_SENSE.
         return 0.0
     end
 end
 
-
 function MOI.optimize!(model::Optimizer)
 
-    # Initialize the expression graph.
-    MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
+    eval_expr = nothing
+    if model.nlp_data.has_objective
+        MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
+        expr = MOI.objective_expr(model.nlp_data.evaluator)
+        expr = substitute_variables(expr)
+        eval_expr = eval(:(x -> $(expr)))
+    end
+
+    obj_func(x...) = eval_objective(model, eval_expr, x)
 
     X = Interval[]
-
-    obj_func(x...) = eval_objective(model, x)
 
     for var in model.variable_info
         lower = var.lower_bound
@@ -169,7 +182,7 @@ function MOI.optimize!(model::Optimizer)
     if model.sense == MOI.MIN_SENSE
         model.result = ibc_minimise(obj_func, IntervalBox(X...))
     elseif model.sense == MOI.MAX_SENSE
-        model.result = ibc_maximise(obj_func, IntervalBox(X...))
+        model.result = ibc_minimise(obj_func, IntervalBox(X...))
     else
         error("Min or Max Sense is not set")
     end
