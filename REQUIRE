@@ -6,3 +6,4 @@ ModelingToolkit 0.2
 IntervalConstraintProgramming
 Distributed
 MathOptInterface
+JuMP
