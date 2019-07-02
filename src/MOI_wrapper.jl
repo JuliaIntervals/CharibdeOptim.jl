@@ -141,7 +141,8 @@ function eval_objective(model::Optimizer, x)
     # The order of the conditions is important. NLP objectives override regular
     # objectives.
     if model.nlp_data.has_objective
-        return MOI.eval_objective(model.nlp_data.evaluator, x)
+        expr = MOI.objective_expr(model.nlp_data.evaluator)
+        return invokelatest(eval(:((x) -> $(expr))), x)
     elseif model.objective !== nothing
         return eval_function(model.objective, x)
     else
@@ -153,9 +154,12 @@ end
 
 function MOI.optimize!(model::Optimizer)
 
-    MOI.initialize(model.nlp_data.evaluator, Symbol[])
-    obj_func(x...) = eval_objective(model, x)
+    # Initialize the expression graph.
+    MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
+
     X = Interval[]
+
+    obj_func(x...) = eval_objective(model, x)
 
     for var in model.variable_info
         lower = var.lower_bound

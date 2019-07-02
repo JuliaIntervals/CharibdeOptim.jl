@@ -4,7 +4,7 @@ mutable struct Information
     iterations::Int
 end
 
-function ibc_minimise(g::Function, X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{T}
+function ibc_minimise(g, X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{T}
 
     #vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
     #C = Contractor(vars, g)
