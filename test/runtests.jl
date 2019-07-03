@@ -3,7 +3,9 @@ addprocs(2)
 @everywhere using CharibdeOptim
 @everywhere using IntervalArithmetic
 using Test
-using JuMP
+using JuMP, MathOptInterface
+
+const MOI = MathOptInterface
 
 @testset "CharibdeOptim tests " begin
 
@@ -29,7 +31,12 @@ using JuMP
             @variable(model, 1<=y<=2)
             @NLobjective(model, Min, x^2+y^2)
             optimize!(model)
-            @test JuMP.objective_value(model) == 2.0
-      end      
+
+            @test JuMP.termination_status(model) == MOI.LOCALLY_SOLVED
+            @test JuMP.primal_status(model) == MOI.FEASIBLE_POINT
+            @test JuMP.objective_value(model) ≈ 2.0
+            @test JuMP.value(x) ≈ 1.0
+            @test JuMP.value(y) ≈ 1.0 
+      end
 
 end

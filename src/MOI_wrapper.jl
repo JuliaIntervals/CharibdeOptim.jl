@@ -204,3 +204,30 @@ function MOI.get(model::Optimizer, ::MOI.ObjectiveValue)
     end
     return model.result[1].lo
 end
+
+function MOI.get(model::Optimizer, ::MOI.ResultCount)
+    return (model.result !== nothing) ? 1 : 0
+end
+
+function MOI.get(model::Optimizer, ::MOI.PrimalStatus)
+    if model.result === nothing
+        return MOI.NO_SOLUTION
+    else
+        return MOI.FEASIBLE_POINT
+    end
+end
+
+function MOI.get(model::Optimizer, ::MOI.DualStatus)
+    if model.result === nothing
+        return MOI.NO_SOLUTION
+    else
+        return MOI.FEASIBLE_POINT
+    end
+end
+
+function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
+    if model.result === nothing
+        error("VariablePrimal not available.")
+    end
+    return model.result[2][1][vi.value].lo
+end
