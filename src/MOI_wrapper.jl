@@ -160,7 +160,7 @@ function eval_objective(model::Optimizer, eval_expr::Union{Function, Nothing}, x
     end
 end
 
-function MOI.optimize!(model::Optimizer)
+function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
 
     eval_expr = nothing
     if model.nlp_data.has_objective
@@ -172,21 +172,31 @@ function MOI.optimize!(model::Optimizer)
 
     obj_func(x...) = eval_objective(model, eval_expr, x)
 
-    X = Interval[]
+    X = [Interval(var.lower_bound, var.upper_bound) for var in model.variable_info]
+    search_space = IntervalBox(X...)
 
-    for var in model.variable_info
-        lower = var.lower_bound
-        upper = var.upper_bound
-        push!(X, lower..upper)
+    if myid() == 2
+        if model.sense == MOI.MIN_SENSE
+            diffevol_minimise(obj_func, search_space, chnl1, chnl2)
+        elseif model.sense == MOI.MAX_SENSE
+            diffevol_maximise(obj_func, search_space, chnl1, chnl2)
+        else
+            error("Min or Max Sense is not set")
+        end
+    elseif myid() == 1
+        chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox, Float64}}(1))
+        chnl2 = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(1))
+
+        remotecall(MOI.optimize!, 2, model, chnl1, chnl2)
+
+        if model.sense == MOI.MIN_SENSE
+            model.result = ibc_minimise(obj_func, search_space, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+        elseif model.sense == MOI.MAX_SENSE
+            model.result = ibc_maximise(obj_func, search_space, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+        else
+            error("Min or Max Sense is not set")
+        end
     end
-    if model.sense == MOI.MIN_SENSE
-        model.result = ibc_minimise(obj_func, IntervalBox(X...))
-    elseif model.sense == MOI.MAX_SENSE
-        model.result = ibc_minimise(obj_func, IntervalBox(X...))
-    else
-        error("Min or Max Sense is not set")
-    end
-    return
 end
 
 
@@ -194,7 +204,7 @@ function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
     if model.result == nothing
         return MOI.OPTIMIZE_NOT_CALLED
     else
-        return MOI.LOCALLY_SOLVED
+        return MOI.OPTIMAL
     end
 end
 
@@ -218,11 +228,7 @@ function MOI.get(model::Optimizer, ::MOI.PrimalStatus)
 end
 
 function MOI.get(model::Optimizer, ::MOI.DualStatus)
-    if model.result === nothing
         return MOI.NO_SOLUTION
-    else
-        return MOI.FEASIBLE_POINT
-    end
 end
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)

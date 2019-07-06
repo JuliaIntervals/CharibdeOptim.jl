@@ -21,7 +21,6 @@ include("MaxDist.jl")
 
 
 function charibde_min(f::Function, X::T) where{T}
-
     chnl1 = RemoteChannel(()->Channel{Tuple{T, Float64}}(1))                       #IBC recieve element from this channel
     chnl2 = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(1))        #DiffEvolution recieve element from this channel
 
