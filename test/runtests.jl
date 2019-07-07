@@ -2,8 +2,7 @@ using Distributed
 addprocs(2)
 @everywhere using CharibdeOptim
 @everywhere using IntervalArithmetic
-using Test
-@everywhere using JuMP
+using Test, JuMP
 
 @testset "CharibdeOptim tests " begin
 
@@ -24,10 +23,10 @@ using Test
       end
 
       @testset "JuMP syntax" begin
-            @everywhere model = Model(with_optimizer(CharibdeOptim.Optimizer))
-            @everywhere @variable(model, 1<=x<=2)
-            @everywhere @variable(model, 1<=y<=2)
-            @everywhere @NLobjective(model, Min, x^2+y^2)
+            model = Model(with_optimizer(CharibdeOptim.Optimizer))
+            @variable(model, 1<=x<=2)
+            @variable(model, 1<=y<=2)
+            @NLobjective(model, Min, x^2+y^2)
             optimize!(model)
 
             @test JuMP.termination_status(model) == MOI.OPTIMAL
