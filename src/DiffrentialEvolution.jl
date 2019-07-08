@@ -1,23 +1,24 @@
-function diffevol_minimise(f::Function, X::T, ibc_chnl::RemoteChannel{Channel{Tuple{T,Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{Array{Float64,1},Float64}}} ) where {T}
+function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{MArray{Tuple{N},Float64,1,N}, Float64}}} ) where{N, T}
 
    n = length(X)
    np = 10*n
 
-   pop = Vector{Float64}[]                          #Initialsing Population
+   pop = MVector{n,Float64}[]
+
    for i in 1:np
-      indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:n]
-      push!(pop, indv)
+      indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:n]                        #Initialsing Population
+      push!(pop, MVector{n, Float64}(indv))
    end
 
    global_min = Inf
-   x_best = last(pop)
+   x_best = pop[np]
 
    while true
 
       fac = 2*rand()
       ind = rand(1:n)
       cr = rand()
-      pop_new = Vector{Float64}[]
+      pop_new = MVector{n, Float64}[]
 
       temp = global_min
 
@@ -29,14 +30,15 @@ function diffevol_minimise(f::Function, X::T, ibc_chnl::RemoteChannel{Channel{Tu
          push!(pop, x_best)
          np = np + 1
       end
+
       for i in 1:np
 
          u = generate_random(1, np, i)
          v = generate_random(1, np, i, u)
          w = generate_random(1, np, i, u, v)   # Choosing index of three different individuals, different from the index of that individual whose mutant vector is going to form.
 
-         m = bound_ensure(pop[u] + fac*(pop[v] - pop[w]), pop[u], X)
-                                             # Mutation : Mutant Vector is created
+         m = bound_ensure(pop[u]+fac*(pop[v]-pop[w]), pop[u], X) # Mutation : Mutant Vector is created
+
          for j in 1:n                        # Recombination or CrossOver :  Mutant vector is itself is modified by Crossover rate (CR)
             if j != ind
                if rand() > cr

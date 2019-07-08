@@ -4,15 +4,15 @@ mutable struct Information
     iterations::Int
 end
 
-function ibc_minimise(g::Function , X::T; ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{T}
-
+function ibc_minimise(g::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{N, T}
+    len = length(X)
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
     C = Contractor(vars, g)
     f = x->g(x...)
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
 
-    minimizers = T[]
+    minimizers = IntervalBox{N,T}[]
     global_min = ∞  # upper bound
 
     info = Information(0, 0, 0)
@@ -41,13 +41,13 @@ function ibc_minimise(g::Function , X::T; ibc_chnl = RemoteChannel(()->Channel{T
         if m < global_min
             global_min = m
             if diffevol_chnl != Nothing
-                put!(diffevol_chnl, (Vector{Float64}(mid(X)), global_min))
+                put!(diffevol_chnl, (MVector(mid(X)), global_min))  # sending best individual to diffevol
                 info.ibc_to_de = info.ibc_to_de + 1
-            end  # sending best individual to DiffEvaluation
+            end
         end
 
-        # Remove all boxes whose lower bound is greater than the current one:
-        filter_elements!(working , (X, global_min) )
+
+        filter_elements!(working , (X, global_min) )   # Remove all boxes whose lower bound is greater than the current one:
 
         if diam(X) < tol
             push!(minimizers, X)
@@ -63,9 +63,9 @@ function ibc_minimise(g::Function , X::T; ibc_chnl = RemoteChannel(()->Channel{T
     if diffevol_chnl != Nothing
         if isready(diffevol_chnl)
             take!(diffevol_chnl)
-            put!(diffevol_chnl,(Vector{Float64}(mid(X)), Inf) )
+            put!(diffevol_chnl,(MVector(mid(X)), Inf) )
         else
-            put!(diffevol_chnl,(Vector{Float64}(mid(X)), Inf) )
+            put!(diffevol_chnl,(MVector(mid(X)), Inf) )
         end
     end
 

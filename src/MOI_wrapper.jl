@@ -111,9 +111,6 @@ end
 function eval_function(aff::MOI.ScalarAffineFunction, x)
     function_value = aff.constant
     for term in aff.terms
-        # Note the implicit assumtion that VariableIndex values match up with
-        # x indices. This is valid because in this wrapper ListOfVariableIndices
-        # is always [1, ..., NumberOfVariables].
         function_value += term.coefficient*x[term.variable_index.value]
     end
     return function_value
@@ -174,6 +171,7 @@ function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
 
     X = [Interval(var.lower_bound, var.upper_bound) for var in model.variable_info]
     search_space = IntervalBox(X...)
+    len = lenght(X)
 
     if myid() == 2
         if model.sense == MOI.MIN_SENSE
@@ -185,7 +183,7 @@ function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
         end
     elseif myid() == 1
         chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox, Float64}}(1))
-        chnl2 = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(1))
+        chnl2 = RemoteChannel(()->Channel{Tuple{MArray{Tuple{len},Float64,1,len},Float64}}(1))
 
         remotecall(MOI.optimize!, 2, model, chnl1, chnl2)
 
