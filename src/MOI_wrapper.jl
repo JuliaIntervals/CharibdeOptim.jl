@@ -160,7 +160,7 @@ function eval_objective(model::Optimizer, eval_expr::Union{Function, Nothing}, x
     end
 end
 
-function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
+function MOI.optimize!(model::Optimizer; debug =true, chnl1 = nothing, chnl2 = nothing)
 
     eval_expr = nothing
     if model.nlp_data.has_objective
@@ -187,12 +187,12 @@ function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
         chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox, Float64}}(1))
         chnl2 = RemoteChannel(()->Channel{Tuple{Vector{Float64}, Float64}}(1))
 
-        remotecall(MOI.optimize!, 2, model, chnl1, chnl2)
+        remotecall(MOI.optimize!, 2, model, debug = debug, chnl1 = chnl1, chnl2 = chnl2)
 
         if model.sense == MOI.MIN_SENSE
-            model.result = ibc_minimise(obj_func, search_space, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+            model.result = ibc_minimise(obj_func, search_space, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
         elseif model.sense == MOI.MAX_SENSE
-            model.result = ibc_maximise(obj_func, search_space, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+            model.result = ibc_maximise(obj_func, search_space, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
         else
             error("Min or Max Sense is not set")
         end
