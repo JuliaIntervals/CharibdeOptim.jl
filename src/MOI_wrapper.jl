@@ -171,7 +171,7 @@ function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
 
     X = [Interval(var.lower_bound, var.upper_bound) for var in model.variable_info]
     search_space = IntervalBox(X...)
-    len = lenght(X)
+    len = length(X)
 
     if myid() == 2
         if model.sense == MOI.MIN_SENSE
@@ -182,7 +182,7 @@ function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
             error("Min or Max Sense is not set")
         end
     elseif myid() == 1
-        chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox, Float64}}(1))
+        chnl1 = RemoteChannel(()->Channel{Tuple{typeof(search_space), Float64}}(1))
         chnl2 = RemoteChannel(()->Channel{Tuple{MArray{Tuple{len},Float64,1,len},Float64}}(1))
 
         remotecall(MOI.optimize!, 2, model, chnl1, chnl2)
