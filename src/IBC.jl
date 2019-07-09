@@ -5,7 +5,7 @@ mutable struct Information
 end
 
 function ibc_minimise(g::Function , X::T; debug = false, ibc_chnl = RemoteChannel(()->Channel{Tuple{T, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{T}
-
+    
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
     C = Contractor(vars, g)
     f = x->g(x...)
@@ -88,7 +88,7 @@ function ibc_minimise(g::Function , X::T; debug = false, ibc_chnl = RemoteChanne
         end
         if debug
             println("DifferentialEvolution is also terminated")
-        end    
+        end
     end
 
     if isready(ibc_chnl)
