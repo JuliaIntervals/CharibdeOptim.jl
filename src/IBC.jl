@@ -41,7 +41,7 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChanne
         if m < global_min
             global_min = m
             if diffevol_chnl != Nothing
-                put!(diffevol_chnl, (MVector(mid(X)), global_min))  # sending best individual to diffevol
+                put!(diffevol_chnl, (SVector(mid(X)), global_min))  # sending best individual to diffevol
                 info.ibc_to_de = info.ibc_to_de + 1
             end
         end

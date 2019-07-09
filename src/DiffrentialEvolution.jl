@@ -1,13 +1,13 @@
-function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{MArray{Tuple{N},Float64,1,N}, Float64}}} ) where{N, T}
+function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64}}} ) where{N, T}
 
    n = length(X)
    np = 10*n
 
-   pop = MVector{n,Float64}[]
+   pop = SArray{Tuple{n},Float64,1,n}[]
 
    for i in 1:np
       indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:n]                        #Initialsing Population
-      push!(pop, MVector{n, Float64}(indv))
+      push!(pop, SVector{n, Float64}(indv))
    end
 
    global_min = Inf
@@ -18,7 +18,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteCh
       fac = 2*rand()
       ind = rand(1:n)
       cr = rand()
-      pop_new = MVector{n, Float64}[]
+      pop_new = SArray{Tuple{n},Float64,1,n}[]
 
       temp = global_min
 
@@ -42,7 +42,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteCh
          for j in 1:n                        # Recombination or CrossOver :  Mutant vector is itself is modified by Crossover rate (CR)
             if j != ind
                if rand() > cr
-                  m[j] = pop[i][j]
+                  m = setindex(m, pop[i][j], j)
                end
             end
          end
@@ -58,7 +58,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteCh
             x_best = pop_new[i]
          end
       end
-
+      
       if global_min < temp
          put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min))   #sending the best individual to ibc_minimise
       end

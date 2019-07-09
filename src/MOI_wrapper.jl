@@ -183,7 +183,7 @@ function MOI.optimize!(model::Optimizer, chnl1 = nothing, chnl2 = nothing)
         end
     elseif myid() == 1
         chnl1 = RemoteChannel(()->Channel{Tuple{typeof(search_space), Float64}}(1))
-        chnl2 = RemoteChannel(()->Channel{Tuple{MArray{Tuple{len},Float64,1,len},Float64}}(1))
+        chnl2 = RemoteChannel(()->Channel{Tuple{SArray{Tuple{len},Float64,1,len},Float64}}(1))
 
         remotecall(MOI.optimize!, 2, model, chnl1, chnl2)
 
