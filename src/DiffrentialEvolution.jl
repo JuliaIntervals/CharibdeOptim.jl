@@ -1,5 +1,5 @@
 function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, diffevol_chnl::RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64}}} ) where{N, T}
-
+   
    n = length(X)
    np = 10*n
 
@@ -58,7 +58,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::RemoteCh
             x_best = pop_new[i]
          end
       end
-      
+
       if global_min < temp
          put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min))   #sending the best individual to ibc_minimise
       end
