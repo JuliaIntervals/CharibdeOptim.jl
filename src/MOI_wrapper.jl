@@ -167,7 +167,7 @@ function eval_objective(model::Optimizer, eval_expr::Union{Function, Nothing}, x
     end
 end
 
-function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_master_to_slave::Union{RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, Channel{Tuple{IntervalBox{N,T},Float64}}}, ch_slave_to_master::Union{ RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64}}}, Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}} ) where{N,T}
+function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_master_to_slave::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, ch_slave_to_master::RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64}}} ) where{N,T}
 
     eval_expr = nothing
     if model.nlp_data.has_objective
@@ -190,13 +190,15 @@ end
 function optimize_serial(model::Optimizer, obj_func::Function, search_space::IntervalBox{N,T}) where{N,T}
     ch_master_to_slave = Channel{Tuple{IntervalBox{N,T}, Float64}}(1)
     ch_slave_to_master = Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1)
-    @async begin
-        diffevol_worker(model, search_space, model.sense, ch_master_to_slave, ch_slave_to_master)
-    end
+
+
     if model.sense == MOI.MIN_SENSE
+        @async diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
         model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
+
     else
         @assert model.sense == MOI.MAX_SENSE
+        @async diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
         model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
     end
     return

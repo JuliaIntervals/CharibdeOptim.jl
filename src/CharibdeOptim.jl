@@ -23,12 +23,21 @@ include("MaxDist.jl")
 
 function charibde_min(f::Function, X::IntervalBox{N,T}; debug = false) where{N,T}
 
-    chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(1))                       #IBC recieve element from this channel
-    chnl2 = RemoteChannel(()->Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1))        #DiffEvolution recieve element from this channel
+    worker_ids = Distributed.workers()
 
-    r1 = remotecall(ibc_minimise, 2, f, X, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
-    r2 = remotecall(diffevol_minimise, 3, f, X, chnl1, chnl2)
-    return fetch(r1)
+    if worker_ids[1] != 1
+        chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(1))                       #IBC recieve element from this channel
+        chnl2 = RemoteChannel(()->Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1))            #DiffEvolution recieve element from this channel
+
+        remotecall(diffevol_minimise, 2, f, X, chnl1, chnl2)
+        return ibc_minimise(f, X, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+    else
+        chnl1 = Channel{Tuple{IntervalBox{N,T}, Float64}}(1)
+        chnl2 = Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1)
+
+        @async diffevol_minimise(f, X, chnl1, chnl2)
+        return ibc_minimise(f, X, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+    end
 end
 
 function charibde_max(f::Function, X:: T) where{T}
