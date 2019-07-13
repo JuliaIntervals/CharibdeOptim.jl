@@ -31,13 +31,19 @@ MOI.eval_objective(::EmptyNLPEvaluator, x) = NaN
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
 function Optimizer(;workers = 2, debug = false)
-    if workers > 1
-        addprocs(workers - 1)
-        @eval @everywhere using CharibdeOptim
-        @eval @everywhere using JuMP
-    end
+
     worker_ids = Distributed.workers()
-    return Optimizer(nothing, worker_ids, empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
+    if workers > 1
+        if worker_ids[1] == 1     # True if the Julia session has only one worker
+            addprocs(workers - 1)
+            @eval @everywhere using CharibdeOptim
+            @eval @everywhere using JuMP
+            worker_ids = Distributed.workers()
+        end
+        return Optimizer(nothing, worker_ids, empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
+    else
+        return Optimizer(nothing, [1], empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
+    end
 end
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "CharibdeOptim"

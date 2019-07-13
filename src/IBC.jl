@@ -83,9 +83,9 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
     if diffevol_chnl != Nothing
         if isready(diffevol_chnl)
             take!(diffevol_chnl)
-            put!(diffevol_chnl,(MVector(mid(X)), Inf) )
+            put!(diffevol_chnl,(SVector(mid(X)), Inf) )
         else
-            put!(diffevol_chnl,(MVector(mid(X)), Inf) )
+            put!(diffevol_chnl,(SVector(mid(X)), Inf) )
         end
         if debug
             println("DifferentialEvolution is also terminated")
