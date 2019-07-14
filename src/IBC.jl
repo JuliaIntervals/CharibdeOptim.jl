@@ -6,7 +6,7 @@ end
 
 
 function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{N, T}
-  
+
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
     C = Contractor(vars, g)
     f = x->g(x...)
@@ -52,12 +52,13 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
         if m < global_min
             global_min = m
+            x_best = SVector(mid(X))
             if diffevol_chnl != Nothing
-                put!(diffevol_chnl, (SVector(mid(X)), global_min))  # sending best individual to diffevol
-                info.ibc_to_de = info.ibc_to_de + 1
                 if debug
-                    println("Box send to DifferentialEvolution: ", x_best)
+                    println("Box send to DifferentialEvolution: ", x_best )
                 end
+                put!(diffevol_chnl, (x_best, global_min))  # sending best individual to diffevol
+                info.ibc_to_de = info.ibc_to_de + 1
             end
         end
 
@@ -82,9 +83,9 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
     if diffevol_chnl != Nothing
         if isready(diffevol_chnl)
             take!(diffevol_chnl)
-            put!(diffevol_chnl,(MVector(mid(X)), Inf) )
+            put!(diffevol_chnl,(SVector(mid(X)), Inf) )
         else
-            put!(diffevol_chnl,(MVector(mid(X)), Inf) )
+            put!(diffevol_chnl,(SVector(mid(X)), Inf) )
         end
         if debug
             println("DifferentialEvolution is also terminated")
