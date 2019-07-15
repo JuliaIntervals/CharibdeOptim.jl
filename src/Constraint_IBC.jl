@@ -1,4 +1,26 @@
-function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{N, T}
+function hc4(X::IntervalBox{N,T}, constraints::Vector{ConstraintCond{T}} where{N, T}
+    n = length(constraints)
+    while 1
+        X_temp = X
+        for i in range(n)
+            X = invokelatest(constraints[i].C,  constraints[i].bound, X)
+        end
+        if X == X_temp
+            break
+        end
+    end
+
+    new_constraints = ConstriaintCond{T}[]
+
+    for i in range(n)
+        if !(invokelatest(constraints[i].C, X) ⊆ constraint[i].bound)
+            push!(new_constraints, constraints[i])
+        end
+    end
+    return new_constraints, X
+end
+
+function ibc_minimise(g::Function , X::IntervalBox{N,T}, constraints::Vector{ConstraintCond{T}}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{N, T}
 
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
     C = Contractor(vars, g)
@@ -30,7 +52,9 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
         A = -∞..global_min
         X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
+        X, constraints = hc4(X, constraints)
         X_min = inf(f(X))
+
 
         if debug
             println("Contracted search_space: ", X)
