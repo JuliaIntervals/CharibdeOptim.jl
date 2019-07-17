@@ -1,30 +1,47 @@
-function hc4(X::IntervalBox{N,T}, constraints::Vector{ConstraintCond{T}} where{N, T}
+function hc4(X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, tol=1e-5) where{N, T}
     n = length(constraints)
-    while 1
+    while true
         X_temp = X
-        for i in range(n)
+        for i in 1:n
             X = invokelatest(constraints[i].C,  constraints[i].bound, X)
         end
-        if X == X_temp
+        if isempty(X) || sum(dist.(X, X_temp)) < tol
             break
         end
     end
 
-    new_constraints = ConstriaintCond{T}[]
+    new_constraints = Constraint{T}[]
 
-    for i in range(n)
-        if !(invokelatest(constraints[i].C, X) ⊆ constraint[i].bound)
+    for i in 1:n
+        if !(invokelatest(constraints[i].C, X) ⊆ constraints[i].bound)
             push!(new_constraints, constraints[i])
         end
     end
     return new_constraints, X
 end
 
-function ibc_minimise(g::Function , X::IntervalBox{N,T}, constraints::Vector{ConstraintCond{T}}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{N, T}
+function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, tol=1e-5) where {N, T}
+    lb = -Inf
+    while true
+        X_temp = X
+        X = invokelatest(C, -Inf..global_min, X)
+        lb = inf(f(X))
+        constraints, X = hc4(X, constraints)
+
+        if isempty(X) || sum(dist.(X, X_temp)) < tol
+            break
+        end
+    end
+
+    return lb, X, constraints
+end
+
+
+function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
 
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
-    C = Contractor(vars, g)
-    f = x->g(x...)
+    g(x...) = f(x)
+    C = BasicContractor(vars, g)
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
 
@@ -50,11 +67,8 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}, constraints::Vector{Con
             println("New search-space : ", X)
         end
 
-        A = -∞..global_min
-        X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
-        X, constraints = hc4(X, constraints)
-        X_min = inf(f(X))
 
+        X_min, X, constraints = contraction(f, C, global_min, X, constraints)
 
         if debug
             println("Contracted search_space: ", X)
@@ -113,12 +127,14 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}, constraints::Vector{Con
         take!(ibc_chnl)
     end
 
-    lower_bound = minimum(inf.(f.(minimizers)))
+    #lower_bound = minimum(inf.(f.(minimizers)))
 
-    if (info.ibc_to_de, info.de_to_ibc) == (0, 0)
-        return Interval(lower_bound,global_min), minimizers
-    else
-        return Interval(lower_bound,global_min), minimizers, info
-    end
+    return Interval(global_min, global_min), minimizers, info
 
+end
+
+
+function ibc_maximise(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; debug = false, tol = 1e-6) where{N, T}
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, constraints, debug = debug, tol = tol)
+    return -bound, minimizer, info
 end

@@ -1,6 +1,6 @@
 module CharibdeOptim
 
-export ConstraintCond, charibde_min, charibde_max
+export Constraint, charibde_min, charibde_max, ibc_maximise
 export ibc_minimise, diffevol_minimise
 
 using IntervalArithmetic
@@ -13,14 +13,17 @@ using StaticArrays
 
 import Base: invokelatest, push!
 
-struct ConstraintCond{T}
+struct Constraint{T}
    bound::Interval{T}
    C::BasicContractor
 end
 
-function ConstraintCond(vars::Vector{Operation}, constraint_expr::Operation, bound::Interval{T}) where{T}
-   C = BasicContrator(vars, constraint_expr)
-   return ConstraintCond{T}(bound, C)
+function Constraint(vars, constraint_expr::Operation, bound::Interval{T}; epsilon = 1e-4) where{T}
+   C = BasicContractor(vars, constraint_expr)
+   if diam(bound) == 0.0
+       bound = Interval(bound.lo - epsilon, bound.hi + epsilon )
+   end
+   return Constraint{T}(bound, C)
 end
 
 mutable struct Information
@@ -31,15 +34,23 @@ end
 
 
 include("IBC.jl")
-include("DiffrentialEvolution.jl")
-include("ConstraintDifferentialEvolution.jl")
+include("DifferentialEvolution.jl")
+include("ConstrainedDifferentialEvolution.jl")
+include("ConstrainedIBC.jl")
+include("MaxDist.jl")
 include("BoundEnsure.jl")
 include("GenerateRandom.jl")
-include("MaxDist.jl")
 
 
+function create_channels(X::IntervalBox{N, T}, workers::Int64) where{N, T}
+    if workers > 1
+        return (RemoteChannel(()->Channel{Tuple{IntervalBox{N, T}, T}}(1)), RemoteChannel(()->Channel{Tuple{SVector{N, T}, T}}(1)))
+    else
+        return (Channel{Tuple{IntervalBox{N, T}, T}}(1), Channel{Tuple{SVector{N, T}, T}}(1))
+    end
+end
 
-function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, debug = false) where{N,T}
+function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-6, debug = false) where{N,T}
 
     worker_ids = Distributed.workers()
     if workers > 1
@@ -47,21 +58,20 @@ function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, debug = fal
             error("Not enough workers available: Add one worker and load the package on it")
         end
 
-        chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(1))                       #IBC recieve element from this channel
-        chnl2 = RemoteChannel(()->Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1))            #DiffEvolution recieve element from this channel
+        (chnl1, chnl2) = create_channels(X, workers)                     #IBC recieve element from chnl1 and DiffEvolution from chnl2
 
         remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2)
-        return ibc_minimise(f, X, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+        return ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
     else
-        chnl1 = Channel{Tuple{IntervalBox{N,T}, Float64}}(1)
-        chnl2 = Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1)
+        (chnl1, chnl2) = create_channels(X, workers)
 
         @async diffevol_minimise(f, X, chnl1, chnl2)
         return ibc_minimise(f, X, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
     end
 end
 
-function charibde_min(f::Function, X::IntervalBox{N,T}, C::Vector{ConstraintCond{T}}; workers = 2, debug = false) where{N,T}
+
+function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, debug = false) where{N,T}
 
     worker_ids = Distributed.workers()
     if workers > 1
@@ -69,27 +79,27 @@ function charibde_min(f::Function, X::IntervalBox{N,T}, C::Vector{ConstraintCond
             error("Not enough workers available: Add one worker and load the package on it")
         end
 
-        chnl1 = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(1))                       #IBC recieve element from this channel
-        chnl2 = RemoteChannel(()->Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1))            #DiffEvolution recieve element from this channel
+        (chnl1, chnl2) = create_channels(X, workers)
 
-        remotecall(diffevol_minimise, worker_ids[1], f, X, C, chnl1, chnl2)
-        return ibc_minimise(f, X, C, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+        remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2)
+        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, debug = debug)
     else
-        chnl1 = Channel{Tuple{IntervalBox{N,T}, Float64}}(1)
-        chnl2 = Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1)
+        (chnl1, chnl2) = create_channels(X, workers)
 
-        @async diffevol_minimise(f, X, C, chnl1, chnl2)
-        return ibc_minimise(f, X, C, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+        @async diffevol_minimise(f, X, constraints, chnl1, chnl2)
+        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, debug = debug)
     end
 end
 
 
 function charibde_max(f::Function, X::IntervalBox{N,T}; workers = 2, debug = false) where{N,T}
-    return charibde_min(x -> -f(x), X, workers, debug)
+    bound, minimizers = charibde_min(x -> -f(x), X, workers = workers, debug = debug)
+    return -bound, minimizers
 end
 
-function charibde_max(f::Function, X::IntervalBox{N,T}, C::Vector{ConstraintCond{T}}; workers = 2, debug = false) where{N,T}
-    return charibde_min(x -> -f(x), X, C, workers, debug)
+function charibde_max(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, debug = false) where{N,T}
+    bound, minimizers = charibde_min(x -> -f(x), X, constraints, workers = workers, debug = debug)
+    return -bound, minimizers
 end
 
 include("MOI_wrapper.jl")

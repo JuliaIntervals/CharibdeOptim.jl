@@ -183,7 +183,7 @@ function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_ma
         eval_expr = eval(:(x -> $(expr)))
     end
 
-    obj_func(x...) = eval_objective(model, eval_expr, x)
+    obj_func(x) = eval_objective(model, eval_expr, x)
 
     if model.sense == MOI.MIN_SENSE
         diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
@@ -235,7 +235,7 @@ function MOI.optimize!(model::Optimizer)
         eval_expr = eval(:(x -> $(expr)))
     end
 
-    obj_func(x...) = eval_objective(model, eval_expr, x)
+    obj_func(x) = eval_objective(model, eval_expr, x)
 
     X = [Interval(var.lower_bound, var.upper_bound) for var in model.variable_info]
     search_space = IntervalBox(X...)

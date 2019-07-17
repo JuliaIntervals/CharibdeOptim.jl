@@ -1,8 +1,9 @@
-function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-3 ) where{N, T}
+function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-6 ) where{N, T}
 
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
-    C = Contractor(vars, g)
-    f = x->g(x...)
+    g(x...) = f(x)
+    C = BasicContractor(vars, g)
+
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
 
@@ -91,10 +92,12 @@ function ibc_minimise(g::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
     lower_bound = minimum(inf.(f.(minimizers)))
 
-    if (info.ibc_to_de, info.de_to_ibc) == (0, 0)
-        return Interval(lower_bound,global_min), minimizers
-    else
-        return Interval(lower_bound,global_min), minimizers, info
-    end
+    return Interval(lower_bound,global_min), minimizers, info
 
+
+end
+
+function ibc_maximise(f::Function, X::IntervalBox{N,T}; debug = false, tol=1e-6) where{N, T}
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, debug = debug, tol=1e-6)
+    return -bound, minimizer, info
 end

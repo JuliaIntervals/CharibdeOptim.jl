@@ -1,14 +1,13 @@
-function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vector{ConstraintCond{T}}, ibc_chnl::Union{Channel{Tuple{IntervalBox{N,T}, Float64}}, RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}} },
-               diffevol_chnl::Union{Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}, RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64}}}} ) where{N, T}
+function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vector{Constraint{T}}, ibc_chnl::Union{Channel{Tuple{IntervalBox{N,T}, T}}, RemoteChannel{Channel{Tuple{IntervalBox{N,T}, T}}} },
+               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T}}}}; debug = false ) where{N, T}
 
-   n = length(X)
-   np = 10*n
+   np = 10*N
 
-   pop = SArray{Tuple{n},Float64,1,n}[]
+   pop = SVector{N, T}[]
 
    for i in 1:np
       indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:n]                        #Initialsing Population
-      push!(pop, SVector{n, Float64}(indv))
+      push!(pop, SVector{N, T}(indv))
    end
 
    global_min = Inf
@@ -19,12 +18,15 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
       fac = 2*rand()
       ind = rand(1:n)
       cr = rand()
-      pop_new = SArray{Tuple{n},Float64,1,n}[]
+      pop_new = SVector{N, T}[]
 
       temp = global_min
 
       if isready(diffevol_chnl)
          (x_best, temp) = take!(diffevol_chnl)  # Receiveing best individual from diffevol_minimise
+         if debug
+            println("Box recevied from IBC: ", (x_best, temp))
+         end
          if temp == Inf
             break
          end
@@ -38,9 +40,9 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
          v = generate_random(1, np, i, u)
          w = generate_random(1, np, i, u, v)   # Choosing index of three different individuals, different from the index of that individual whose mutant vector is going to form.
 
-         m = bound_ensure(pop[u]+fac*(pop[v]-pop[w]), pop[u], X) # Mutation : Mutant Vector is created
+         m = bound_ensure(pop[u] + fac * (pop[v] - pop[w]), pop[u], X) # Mutation : Mutant Vector is created
 
-         for j in 1:n                        # Recombination or CrossOver :  Mutant vector is itself is modified by Crossover rate (CR)
+         for j in 1:N                        # Recombination or CrossOver :  Mutant vector is itself is modified by Crossover rate (CR)
             if j != ind
                if rand() > cr
                   m = setindex(m, pop[i][j], j)
@@ -51,16 +53,16 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
          (c1, c2) = (0, 0)
 
          for constraint in constraints
-            if constraint.C(m...) ∈ constraint.bound
+            if constraint.C(m) ∈ constraint.bound
                c1 = c1 + 1
             end
-            if constraint.C(pop[i]...) ∈ constraint.bound
+            if constraint.C(pop[i]) ∈ constraint.bound
                c2 = c2 + 1
             end
          end
 
          if (c1, c2) == (length(constraints), length(constraints))
-            if f(m...) < f(pop[i]...)
+            if f(m) < f(pop[i])
                push!(pop_new, m)
             else
                push!(pop_new, pop[i])
@@ -74,14 +76,18 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
          end
 
 
-         if f(pop_new[i]...) < global_min
-            global_min = f(pop_new[i]...)
+         if f(pop_new[i]) < global_min
+            global_min = f(pop_new[i])
             x_best = pop_new[i]
          end
       end
 
       if global_min < temp
-         put!(ibc_chnl, (IntervalBox(Interval.(x_best)), global_min))   #sending the best individual to ibc_minimise
+         best_box = (IntervalBox(Interval.(x_best)), global_min)
+         put!(ibc_chnl, best_box)   #sending the best individual to ibc_minimise
+         if debug
+            println("Box send to IBC: ", best_box)
+         end
       end
 
       pop = pop_new
