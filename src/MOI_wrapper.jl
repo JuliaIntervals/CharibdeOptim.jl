@@ -12,6 +12,8 @@ VariableInfo() = VariableInfo(-Inf, Inf)
 
 mutable struct Optimizer <: MOI.AbstractOptimizer
     result
+    tol::Float64
+    np:: Int64
     workers::Vector{Int64}
     nlp_data::MOI.NLPBlockData
     variable_info::Vector{VariableInfo}
@@ -30,7 +32,7 @@ MOI.eval_objective(::EmptyNLPEvaluator, x) = NaN
 
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
-function Optimizer(;workers = 2, debug = false)
+function Optimizer(;workers = 2, tol = 1e-3, np = 30, debug = false)
 
     worker_ids = Distributed.workers()
     if workers > 1
@@ -40,9 +42,9 @@ function Optimizer(;workers = 2, debug = false)
             @eval @everywhere using JuMP
             worker_ids = Distributed.workers()
         end
-        return Optimizer(nothing, worker_ids, empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
+        return Optimizer(nothing, tol, np, worker_ids, empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
     else
-        return Optimizer(nothing, [1], empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
+        return Optimizer(nothing, tol, np, [1], empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
     end
 end
 
@@ -186,10 +188,10 @@ function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_ma
     obj_func(x) = eval_objective(model, eval_expr, x)
 
     if model.sense == MOI.MIN_SENSE
-        diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
+        diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
     else
         @assert sense == MOI.MAX_SENSE
-        diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
+        diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
     end
 end
 
@@ -199,13 +201,13 @@ function optimize_serial(model::Optimizer, obj_func::Function, search_space::Int
 
 
     if model.sense == MOI.MIN_SENSE
-        @async diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
-        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
+        @async diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
+        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
 
     else
         @assert model.sense == MOI.MAX_SENSE
-        @async diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
-        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
+        @async diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
+        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
     end
     return
 end
@@ -218,10 +220,10 @@ function optimize_parallel(model::Optimizer, obj_func::Function, search_space::I
     remotecall(CharibdeOptim.diffevol_worker, model.workers[1], model, search_space, ch_master_to_slave, ch_slave_to_master)
 
     if model.sense == MOI.MIN_SENSE
-        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
+        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
     else
         @assert model.sense == MOI.MAX_SENSE
-        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
+        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
     end
 end
 

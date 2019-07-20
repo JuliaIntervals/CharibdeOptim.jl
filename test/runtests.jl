@@ -68,7 +68,6 @@ end
 end
 
 using ModelingToolkit
-using IntervalConstraintProgramming
 
 @testset "Using Interval bound and contract algorithm for Constrained Optimisation" begin
       vars = ModelingToolkit.@variables x y
@@ -76,6 +75,6 @@ using IntervalConstraintProgramming
       C2 = Constraint(vars, x+3y, -Inf..9)
 
       (maxima, maximisers) = ibc_maximise(X->((x,y)=X;-(x-4)^2-(y-4)^2), IntervalBox(-4..4, -4..4),[C1, C2])
-      @test maxima ⊆ -6.75 .. -6.74
-      @test maximisers[1] ⊆ (2.92 .. 2.93) × (1.63 .. 1.64)
+      @test maxima ⊆ -8 .. -7
+      @test maximisers[1] ⊆ (2 .. 2.5) × (2 .. 2.5)
 end

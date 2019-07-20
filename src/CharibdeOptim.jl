@@ -50,7 +50,7 @@ function create_channels(X::IntervalBox{N, T}, workers::Int64) where{N, T}
     end
 end
 
-function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-6, debug = false) where{N,T}
+function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
 
     worker_ids = Distributed.workers()
     if workers > 1
@@ -60,7 +60,7 @@ function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-6,
 
         (chnl1, chnl2) = create_channels(X, workers)                     #IBC recieve element from chnl1 and DiffEvolution from chnl2
 
-        remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2)
+        remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2, np = np)
         return ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
     else
         (chnl1, chnl2) = create_channels(X, workers)
@@ -71,7 +71,7 @@ function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-6,
 end
 
 
-function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, debug = false) where{N,T}
+function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
 
     worker_ids = Distributed.workers()
     if workers > 1
@@ -81,25 +81,25 @@ function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Cons
 
         (chnl1, chnl2) = create_channels(X, workers)
 
-        remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2)
+        remotecall(diffevol_minimise, worker_ids[1], f, X, constraints, chnl1, chnl2, np = np)
         return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, debug = debug)
     else
         (chnl1, chnl2) = create_channels(X, workers)
 
-        @async diffevol_minimise(f, X, constraints, chnl1, chnl2)
+        @async diffevol_minimise(f, X, constraints, chnl1, chnl2, np = np)
         return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, debug = debug)
     end
 end
 
 
-function charibde_max(f::Function, X::IntervalBox{N,T}; workers = 2, debug = false) where{N,T}
-    bound, minimizers = charibde_min(x -> -f(x), X, workers = workers, debug = debug)
-    return -bound, minimizers
+function charibde_max(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
+    bound, minimizers, info = charibde_min(x -> -f(x), X, workers = workers, tol = tol, np = np, debug = debug)
+    return -bound, minimizers, info
 end
 
-function charibde_max(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, debug = false) where{N,T}
-    bound, minimizers = charibde_min(x -> -f(x), X, constraints, workers = workers, debug = debug)
-    return -bound, minimizers
+function charibde_max(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
+    bound, minimizers, info = charibde_min(x -> -f(x), X, constraints, workers = workers, tol = tol, np = np, debug = debug)
+    return -bound, minimizers, info
 end
 
 include("MOI_wrapper.jl")

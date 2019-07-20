@@ -1,7 +1,5 @@
 function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vector{Constraint{T}}, ibc_chnl::Union{Channel{Tuple{IntervalBox{N,T}, T}}, RemoteChannel{Channel{Tuple{IntervalBox{N,T}, T}}} },
-               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T}}}}; debug = false ) where{N, T}
-
-   np = 10*N
+               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T}}}}; np = 10*N, debug = false ) where{N, T}
 
    pop = SVector{N, T}[]
 

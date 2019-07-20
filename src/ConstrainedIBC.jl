@@ -36,6 +36,20 @@ function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, c
     return lb, X, constraints
 end
 
+function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vector{Constraints{T}}) where{N, T}
+    point = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)]
+
+    for j in 1:length(constraints)
+        if !(invokelatest(constraints[j].C, point) ⊆ constraints[j].bound)
+            point = generate_random_feasible_point(X, constraints)
+            break
+        end
+    end
+
+    return point
+end
+
+
 
 function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
 
@@ -79,7 +93,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
         end
 
         # find candidate for upper bound of global minimum by just evaluating a point in the interval:
-        m = sup(f(Interval.(mid.(X))))   # evaluate at midpoint of current interval
+        m = sup(f(Interval.(generate_random_feasible_point(X, constraints))))   # evaluate at feasible point
 
         if m < global_min
             global_min = m
