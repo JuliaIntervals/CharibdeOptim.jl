@@ -50,6 +50,17 @@ function create_channels(X::IntervalBox{N, T}, workers::Int64) where{N, T}
     end
 end
 
+"""Usage:
+```
+f = X->((x,y)=X;x^3 + 2y + 5)
+A = IntervalBox(2..4, 2..3)
+(global_min, minimisers, info) = charibde_min(f, A)
+(global_max, maximisers, info) = charibde_max(f, A)
+
+charibde_min/charibde_max find the global minimum/maximum value of the function in given search space by using two algorithms Interval Bound & Contract(IBC) and Differential Evolution inparallel
+TODO: Fix the parallel implementation of charibde_min/max for Constrained Optimisation
+```
+"""
 function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
 
     worker_ids = Distributed.workers()
@@ -65,8 +76,8 @@ function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3,
     else
         (chnl1, chnl2) = create_channels(X, workers)
 
-        @async diffevol_minimise(f, X, chnl1, chnl2)
-        return ibc_minimise(f, X, debug = debug, ibc_chnl = chnl1, diffevol_chnl = chnl2)
+        @async diffevol_minimise(f, X, chnl1, chnl2, np = np)
+        return ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
     end
 end
 
@@ -82,12 +93,12 @@ function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Cons
         (chnl1, chnl2) = create_channels(X, workers)
 
         remotecall(diffevol_minimise, worker_ids[1], f, X, constraints, chnl1, chnl2, np = np)
-        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, debug = debug)
+        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
     else
         (chnl1, chnl2) = create_channels(X, workers)
 
         @async diffevol_minimise(f, X, constraints, chnl1, chnl2, np = np)
-        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, debug = debug)
+        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol= tol, debug = debug)
     end
 end
 

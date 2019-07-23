@@ -1,3 +1,25 @@
+"""Usage:
+```
+For Unconstrained Optimsation:
+  f = X->((x,y)=X;x^3 + 2y + 5)
+  A = IntervalBox(2..4, 2..3)
+  (global_min, minimisers, info) = ibc_minimise(f, A)
+  (global_max, maximisers, info) = ibc_maximise(f, A)
+
+For Constrained Optimisation:
+  f = X->((x,y)=X;-(x-4)^2-(y-4)^2)
+  A = IntervalBox(-4..4, -4..4)
+
+  vars = ModelingToolkit.@variables x y
+  C1 = Constraint(vars, x+y, -Inf..4)
+  C2 = Constraint(vars, x+3y, -Inf..9)
+
+  (global_min, minimisers, info) = ibc_minimise(f, A, [C1, C2])
+  (global_max, maximisers, info) = ibc_maximise(f, A, [C1, C2])  
+
+ibc_minimise/ibc_maximise find the global minimum/maximum value of the function in given search space by using Interval Bound & Contract(IBC) algorithm
+```
+"""
 function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-6 ) where{N, T}
 
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]

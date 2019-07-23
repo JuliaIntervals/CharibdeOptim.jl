@@ -36,7 +36,7 @@ function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, c
     return lb, X, constraints
 end
 
-function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vector{Constraints{T}}) where{N, T}
+function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vector{Constraint{T}}) where{N, T}
     point = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)]
 
     for j in 1:length(constraints)
@@ -48,7 +48,6 @@ function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vecto
 
     return point
 end
-
 
 
 function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
