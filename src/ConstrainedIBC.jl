@@ -66,6 +66,8 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
 
     while !isempty(working)
 
+        info.iterations= info.iterations + 1
+        
         if isready(ibc_chnl)
             from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
             if debug
@@ -101,7 +103,11 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
                 if debug
                     println("Box send to DifferentialEvolution: ", x_best )
                 end
-                put!(diffevol_chnl, (x_best, global_min))  # sending best individual to diffevol
+                if info.iterations % 200 == 0
+                    put!(diffevol_chnl, (x_best, global_min, X))  # sending best individual to diffevol
+                else
+                    put!(diffevol_chnl, (x_best, global_min, nothing))
+                end
                 info.ibc_to_de = info.ibc_to_de + 1
             end
         end
@@ -117,7 +123,6 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
             push!( working, (X2, inf(f(X2))) )
             num_bisections += 1
         end
-        info.iterations= info.iterations + 1
     end
 
     if debug
@@ -127,9 +132,9 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
     if diffevol_chnl != Nothing
         if isready(diffevol_chnl)
             take!(diffevol_chnl)
-            put!(diffevol_chnl,(SVector(mid(X)), Inf) )
+            put!(diffevol_chnl,(SVector(mid(X)), Inf, nothing) )
         else
-            put!(diffevol_chnl,(SVector(mid(X)), Inf) )
+            put!(diffevol_chnl,(SVector(mid(X)), Inf, nothing) )
         end
         if debug
             println("DifferentialEvolution is also terminated")

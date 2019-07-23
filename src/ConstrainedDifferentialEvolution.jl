@@ -1,5 +1,5 @@
 function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vector{Constraint{T}}, ibc_chnl::Union{Channel{Tuple{IntervalBox{N,T}, T}}, RemoteChannel{Channel{Tuple{IntervalBox{N,T}, T}}} },
-               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T}}}}; np = 10*N, debug = false ) where{N, T}
+               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}}}; np = 10*N, debug = false ) where{N, T}
 
    pop = SVector{N, T}[]
 
@@ -21,12 +21,15 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
       temp = global_min
 
       if isready(diffevol_chnl)
-         (x_best, temp) = take!(diffevol_chnl)  # Receiveing best individual from diffevol_minimise
+         (x_best, temp, new_box) = take!(diffevol_chnl)  # Receiveing best individual from diffevol_minimise
          if debug
             println("Box recevied from IBC: ", (x_best, temp))
          end
          if temp == Inf
             break
+         end
+         if new_box != nothing
+            X = new_box
          end
          push!(pop, x_best)
          np = np + 1
