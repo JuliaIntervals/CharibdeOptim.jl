@@ -71,13 +71,15 @@ function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3,
 
         (chnl1, chnl2) = create_channels(X, workers)                     #IBC recieve element from chnl1 and DiffEvolution from chnl2
 
-        remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2, np = np)
-        return ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        r1 = remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2, np = np)
+        r2 = remotecall(ibc_minimise, worker_ids[2], f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        return fetch(r2)
     else
         (chnl1, chnl2) = create_channels(X, workers)
 
-        @async diffevol_minimise(f, X, chnl1, chnl2, np = np)
-        return ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        r1 = @async diffevol_minimise(f, X, chnl1, chnl2, np = np)
+        r2 = @async ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        return fetch(r2)
     end
 end
 
@@ -86,19 +88,21 @@ function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Cons
 
     worker_ids = Distributed.workers()
     if workers > 1
-        if worker_ids[1] == 1
-            error("Not enough workers available: Add one worker and load the package on it")
+        if nprocs() < 3
+            error("Not enough workers available: Session should have atleast 2 workers more")
         end
 
         (chnl1, chnl2) = create_channels(X, workers)
 
-        remotecall(diffevol_minimise, worker_ids[1], f, X, constraints, chnl1, chnl2, np = np)
-        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        r1 = remotecall(diffevol_minimise, worker_ids[1], f, X, constraints, chnl1, chnl2, np = np)
+        r2 = remotecall(ibc_minimise, worker_ids[2], f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        return fetch(r2)
     else
         (chnl1, chnl2) = create_channels(X, workers)
 
-        @async diffevol_minimise(f, X, constraints, chnl1, chnl2, np = np)
-        return ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol= tol, debug = debug)
+        r1 = @async diffevol_minimise(f, X, constraints, chnl1, chnl2, np = np)
+        r2 = @async ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol= tol, debug = debug)
+        return fetch(r2)
     end
 end
 

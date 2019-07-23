@@ -1,7 +1,7 @@
 using Test, JuMP
 
 using Distributed
-addprocs(1)
+addprocs(2)
 @everywhere using CharibdeOptim
 @everywhere using IntervalArithmetic
 
@@ -49,7 +49,7 @@ end
 end
 
 
-@testset "Using JuMP syntax by using only one worker " begin           #for using two workers just dont pass 'workers' arguments as its value is set to 2 
+@testset "Using JuMP syntax by using only one worker " begin           #for using two workers just dont pass 'workers' arguments as its value is set to 2
       model = Model(with_optimizer(CharibdeOptim.Optimizer, workers = 1))
       @variable(model, 1<=x<=2)
       @variable(model, 1<=y<=2)

@@ -34,10 +34,11 @@ empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
 function Optimizer(;workers = 2, tol = 1e-3, np = 30, debug = false)
 
-    worker_ids = Distributed.workers()
     if workers > 1
-        if worker_ids[1] == 1     # True if the Julia session has only one worker
-            addprocs(workers - 1)
+        worker_ids = Distributed.workers()
+        workers_present = nprocs()
+        if  workers_present < 3     # True if the Julia session has only one worker
+            addprocs(3 - workers_present)
             @eval @everywhere using CharibdeOptim
             @eval @everywhere using JuMP
             worker_ids = Distributed.workers()
@@ -201,13 +202,15 @@ function optimize_serial(model::Optimizer, obj_func::Function, search_space::Int
 
 
     if model.sense == MOI.MIN_SENSE
-        @async diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
-        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        r1 = @async diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
+        r2 = @async ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        model.result = fetch(r2)
 
     else
         @assert model.sense == MOI.MAX_SENSE
-        @async diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
-        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        r1 = @async diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
+        r2 = @async ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        model.result = fetch(r2)
     end
     return
 end
@@ -217,13 +220,15 @@ function optimize_parallel(model::Optimizer, obj_func::Function, search_space::I
     ch_master_to_slave = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(1))
     ch_slave_to_master = RemoteChannel(()->Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64, Union{Nothing, IntervalBox{N, T}}}}(1))
 
-    remotecall(CharibdeOptim.diffevol_worker, model.workers[1], model, search_space, ch_master_to_slave, ch_slave_to_master)
+    r1 = remotecall(CharibdeOptim.diffevol_worker, model.workers[1], model, search_space, ch_master_to_slave, ch_slave_to_master)
 
     if model.sense == MOI.MIN_SENSE
-        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        r2 = remotecall(ibc_minimise, model.workers[2], obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        model.result = fetch(r2)
     else
         @assert model.sense == MOI.MAX_SENSE
-        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        r2 = remotecall(ibc_maximise, model.workers[2], obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        model.result = fetch(r2)
     end
 end
 
