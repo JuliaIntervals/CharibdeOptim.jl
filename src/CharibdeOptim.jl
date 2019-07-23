@@ -1,6 +1,6 @@
 module CharibdeOptim
 
-export Constraint, charibde_min, charibde_max, ibc_maximise
+export constraint, charibde_min, charibde_max, ibc_maximise
 export ibc_minimise, diffevol_minimise
 
 using IntervalArithmetic
@@ -18,12 +18,12 @@ struct Constraint{T}
    C::BasicContractor
 end
 
-function Constraint(vars, constraint_expr::Operation, bound::Interval{T}; epsilon = 1e-4) where{T}
+function constraint(vars, constraint_expr::Operation, bound::Interval{T}; epsilon = 1e-4) where{T}
    C = BasicContractor(vars, constraint_expr)
    if diam(bound) == 0.0
-       bound = Interval(bound.lo - epsilon, bound.hi + epsilon )
+       bound = Interval(bound.lo - epsilon, bound.hi + epsilon)
    end
-   return Constraint{T}(bound, C)
+   Constraint{T}(bound, C)
 end
 
 mutable struct Information

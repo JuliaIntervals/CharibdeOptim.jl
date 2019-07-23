@@ -4,7 +4,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
    pop = SVector{N, T}[]
 
    for i in 1:np
-      indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:n]                        #Initialsing Population
+      indv = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:N]                        #Initialsing Population
       push!(pop, SVector{N, T}(indv))
    end
 
@@ -14,7 +14,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
    while true
 
       fac = 2*rand()
-      ind = rand(1:n)
+      ind = rand(1:N)
       cr = rand()
       pop_new = SVector{N, T}[]
 
