@@ -79,6 +79,7 @@ end
 
 end
 
+
 @testset "Optimising difficult problem using JuMP" begin
       model = Model(with_optimizer(CharibdeOptim.Optimizer))
 
@@ -108,4 +109,14 @@ end
       @test JuMP.value(x7) ⊆ 2.99 .. 3.01
       @test JuMP.value(x8) ⊆ 2.99 .. 3.01
       @test JuMP.value(x9) ⊆ 13.99 .. 14.01
+end
+
+@testset "Optimising difficult problems using Charibde" begin
+      f = X->((x1,x2,x3,x4,x5,x6,x7,x8,x9)=X;x1^2 + x2^2 + x3^4 - x4^7 - 200x5 - x6^5 - x7^9 + x8^5 - 8x9^3)
+      X = IntervalBox(2..3, 3..4, 9..14, 2..3, 3..4, 9..14, 2..3, 3..4, 9..14)
+      (global_min, minimisers, info) = charibde_min(f, X)
+
+      @test global_min ⊆ -575630 .. -575628
+      @test minimisers[1] ⊆ (1.99 .. 2.01) × (2.99 .. 3.01) × (8.99 .. 9.01) × (2.99 .. 3.01) × (3.99 .. 4.01) × (13.99 .. 14.01) × (2.99 .. 3.01) × (2.99 .. 3.01) × (13.99 .. 14.01)
+
 end
