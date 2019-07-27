@@ -12,6 +12,8 @@ VariableInfo() = VariableInfo(-Inf, Inf)
 
 mutable struct Optimizer <: MOI.AbstractOptimizer
     result
+    tol::Float64
+    np:: Int64
     workers::Vector{Int64}
     nlp_data::MOI.NLPBlockData
     variable_info::Vector{VariableInfo}
@@ -30,19 +32,20 @@ MOI.eval_objective(::EmptyNLPEvaluator, x) = NaN
 
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
-function Optimizer(;workers = 2, debug = false)
+function Optimizer(;workers = 2, tol = 1e-3, np = 30, debug = false)
 
-    worker_ids = Distributed.workers()
     if workers > 1
-        if worker_ids[1] == 1     # True if the Julia session has only one worker
-            addprocs(workers - 1)
-            @eval @everywhere using CharibdeOptim
-            @eval @everywhere using JuMP
+        worker_ids = Distributed.workers()
+        workers_present = nprocs()
+        if  workers_present < 3     # True if the Julia session has only one worker
+            addprocs(3 - workers_present)
             worker_ids = Distributed.workers()
         end
-        return Optimizer(nothing, worker_ids, empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
+        @eval @everywhere using CharibdeOptim
+        @eval @everywhere using JuMP
+        return Optimizer(nothing, tol, np, worker_ids, empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
     else
-        return Optimizer(nothing, [1], empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
+        return Optimizer(nothing, tol, np, [1], empty_nlp_data(), [], MOI.FEASIBILITY_SENSE, nothing, debug)
     end
 end
 
@@ -173,7 +176,7 @@ function eval_objective(model::Optimizer, eval_expr::Union{Function, Nothing}, x
     end
 end
 
-function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_master_to_slave::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, ch_slave_to_master::RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64}}} ) where{N,T}
+function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_master_to_slave::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, ch_slave_to_master::RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64, Union{Nothing, IntervalBox{N, T}}}}} ) where{N,T}
 
     eval_expr = nothing
     if model.nlp_data.has_objective
@@ -183,29 +186,51 @@ function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_ma
         eval_expr = eval(:(x -> $(expr)))
     end
 
-    obj_func(x...) = eval_objective(model, eval_expr, x)
+    obj_func(x) = eval_objective(model, eval_expr, x)
 
     if model.sense == MOI.MIN_SENSE
-        diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
+        diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
     else
         @assert sense == MOI.MAX_SENSE
-        diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
+        diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
+    end
+end
+
+function ibc_worker(model::Optimizer, search_space::IntervalBox{N,T}, debug::Bool, ch_master_to_slave::RemoteChannel{Channel{Tuple{IntervalBox{N,T},Float64}}}, ch_slave_to_master::RemoteChannel{Channel{Tuple{SArray{Tuple{N},Float64,1,N}, Float64, Union{Nothing, IntervalBox{N, T}}}}}, tol::T) where{N,T}
+
+    eval_expr = nothing
+    if model.nlp_data.has_objective
+        MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
+        expr = MOI.objective_expr(model.nlp_data.evaluator)
+        expr = substitute_variables(expr)
+        eval_expr = eval(:(x -> $(expr)))
+    end
+
+    obj_func(x) = eval_objective(model, eval_expr, x)
+
+    if model.sense == MOI.MIN_SENSE
+        ibc_minimise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol)
+    else
+        @assert sense == MOI.MAX_SENSE
+        ibc_maximise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol)
     end
 end
 
 function optimize_serial(model::Optimizer, obj_func::Function, search_space::IntervalBox{N,T}) where{N,T}
     ch_master_to_slave = Channel{Tuple{IntervalBox{N,T}, Float64}}(1)
-    ch_slave_to_master = Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1)
+    ch_slave_to_master = Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64, Union{Nothing, IntervalBox{N, T}}}}(1)
 
 
     if model.sense == MOI.MIN_SENSE
-        @async diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
-        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
+        r1 = @async diffevol_minimise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
+        r2 = @async ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        model.result = fetch(r2)
 
     else
         @assert model.sense == MOI.MAX_SENSE
-        @async diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master)
-        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
+        r1 = @async diffevol_maximise(obj_func, search_space, ch_master_to_slave, ch_slave_to_master, np = model.np)
+        r2 = @async ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol)
+        model.result = fetch(r2)
     end
     return
 end
@@ -213,16 +238,11 @@ end
 function optimize_parallel(model::Optimizer, obj_func::Function, search_space::IntervalBox{N,T}) where{N,T}
 
     ch_master_to_slave = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(1))
-    ch_slave_to_master = RemoteChannel(()->Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64}}(1))
+    ch_slave_to_master = RemoteChannel(()->Channel{Tuple{SArray{Tuple{N},Float64,1,N},Float64, Union{Nothing, IntervalBox{N, T}}}}(1))
 
-    remotecall(CharibdeOptim.diffevol_worker, model.workers[1], model, search_space, ch_master_to_slave, ch_slave_to_master)
-
-    if model.sense == MOI.MIN_SENSE
-        model.result = ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
-    else
-        @assert model.sense == MOI.MAX_SENSE
-        model.result = ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master)
-    end
+    r1 = remotecall(CharibdeOptim.diffevol_worker, model.workers[1], model, search_space, ch_master_to_slave, ch_slave_to_master)
+    r2 = remotecall(CharibdeOptim.ibc_worker, model.workers[2], model, search_space, model.debug, ch_master_to_slave, ch_slave_to_master, model.tol)
+    model.result = fetch(r2)
 end
 
 function MOI.optimize!(model::Optimizer)
@@ -235,7 +255,7 @@ function MOI.optimize!(model::Optimizer)
         eval_expr = eval(:(x -> $(expr)))
     end
 
-    obj_func(x...) = eval_objective(model, eval_expr, x)
+    obj_func(x) = eval_objective(model, eval_expr, x)
 
     X = [Interval(var.lower_bound, var.upper_bound) for var in model.variable_info]
     search_space = IntervalBox(X...)

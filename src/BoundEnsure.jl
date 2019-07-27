@@ -2,7 +2,7 @@
  Because of this, we created a separate function i.e BoundEnsure that checks and corrects for this. In the event
  that one of these rogue points are found, we’ll simply move it to the nearest boundary """
 
-function bound_ensure(m::SArray{Tuple{N},Float64,1,N}, u::SArray{Tuple{N},Float64,1,N}, X::T) where {N, T}
+function bound_ensure(m::SVector{N, T}, u::SVector{N, T}, X::IntervalBox{N, T}) where {N, T}
 
     for i in 1:length(X)
       if m[i] < X[i].lo
