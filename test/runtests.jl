@@ -24,7 +24,7 @@ end
       C1 = constraint(vars, x+y, -Inf..4)
       C2 = constraint(vars, x+3y, -Inf..9)
 
-      (maxima, maximisers, info) = ibc_maximise(X->((x,y)=X;-(x-4)^2-(y-4)^2), IntervalBox(-4..4, -4..4),[C1, C2])
+      (maxima, maximisers, info) = ibc_maximise(X->((x,y)=X;-(x-4)^2-(y-4)^2), IntervalBox(-4..4, -4..4),[C1, C2], tol = 1e-1)
       @test_skip maxima ⊆ -8.1 .. -7.9
       @test_skip maximisers[1] ⊆ (1.9 .. 2.1) × (1.9 .. 2.1)
 end
