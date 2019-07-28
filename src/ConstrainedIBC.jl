@@ -37,16 +37,19 @@ function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, c
 end
 
 function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vector{Constraint{T}}) where{N, T}
-    point = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)]
-
-    for j in 1:length(constraints)
-        if !(invokelatest(constraints[j].C, point) ⊆ constraints[j].bound)
-            point = generate_random_feasible_point(X, constraints)
-            break
+    for i in 1:30
+        point = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)]      # discover a random point in interval box X
+        for j in 1:length(constraints)
+            if !(invokelatest(constraints[j].C, point) ⊆ constraints[j].bound)
+                point = generate_random_feasible_point(X, constraints)
+                break
+            end
+            if j == length(constraints)
+                return (true, point)
+            end
         end
     end
-
-    return point
+    return (false)
 end
 
 
@@ -67,7 +70,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
     while !isempty(working)
 
         info.iterations= info.iterations + 1
-        
+
         if isready(ibc_chnl)
             from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
             if debug
@@ -93,36 +96,50 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
             continue
         end
 
-        # find candidate for upper bound of global minimum by just evaluating a point in the interval:
-        m = sup(f(Interval.(generate_random_feasible_point(X, constraints))))   # evaluate at feasible point
 
-        if m < global_min
-            global_min = m
-            x_best = SVector(mid(X))
-            if diffevol_chnl != Nothing
-                if debug
-                    println("Box send to DifferentialEvolution: ", x_best )
+        output = generate_random_feasible_point(X, constraints)   # finding a feasible point in the interval box if there present any
+
+        if output[1]                           # output[1] is true if generate_random_feasible_point finds a feasible point
+            feas_point = output[2]
+            m = sup(f(Interval.(feas_point)))  # find candidate for upper bound of global minimum by just evaluating a feasible point in the interval box
+
+            if m < global_min
+                global_min = m
+                x_best = SVector(mid(X))
+                if diffevol_chnl != Nothing
+                    if debug
+                        println("Box send to DifferentialEvolution: ", x_best )
+                    end
+                    if info.iterations % 200 == 0
+                        put!(diffevol_chnl, (x_best, global_min, X))  # sending best individual to diffevol
+                    else
+                        put!(diffevol_chnl, (x_best, global_min, nothing))
+                    end
+                    info.ibc_to_de = info.ibc_to_de + 1
                 end
-                if info.iterations % 200 == 0
-                    put!(diffevol_chnl, (x_best, global_min, X))  # sending best individual to diffevol
-                else
-                    put!(diffevol_chnl, (x_best, global_min, nothing))
-                end
-                info.ibc_to_de = info.ibc_to_de + 1
             end
-        end
 
+            filter_elements!(working , (X, global_min) )   # Remove all boxes whose lower bound is greater than the current one:
 
-        filter_elements!(working , (X, global_min) )   # Remove all boxes whose lower bound is greater than the current one:
-
-        if diam(X) < tol
-            push!(minimizers, X)
+            if diam(X) < tol
+                push!(minimizers, X)
+            else
+                X1, X2 = bisect(X)
+                push!( working, (X1, inf(f(X1))) )
+                push!( working, (X2, inf(f(X2))) )
+                num_bisections += 1
+            end
         else
-            X1, X2 = bisect(X)
-            push!( working, (X1, inf(f(X1))) )
-            push!( working, (X2, inf(f(X2))) )
-            num_bisections += 1
+            if diam(X) < tol
+                push!(minimizers, X)
+            else
+                X1, X2 = bisect(X)
+                push!( working, (X1, inf(f(X1))) )
+                push!( working, (X2, inf(f(X2))) )
+                num_bisections += 1
+            end    
         end
+
     end
 
     if debug
