@@ -41,15 +41,17 @@ function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vecto
         point = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)]      # discover a random point in interval box X
         for j in 1:length(constraints)
             if !(invokelatest(constraints[j].C, point) ⊆ constraints[j].bound)
-                point = generate_random_feasible_point(X, constraints)
                 break
             end
             if j == length(constraints)
-                return (true, point)
+                return (true, point)    # return a feasible point
             end
         end
+        if i == 30
+            return (false, point)    # returns a infeasible point
+        end        
     end
-    return (false)
+
 end
 
 
@@ -137,7 +139,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
                 push!( working, (X1, inf(f(X1))) )
                 push!( working, (X2, inf(f(X2))) )
                 num_bisections += 1
-            end    
+            end
         end
 
     end
