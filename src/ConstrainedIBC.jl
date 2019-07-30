@@ -10,14 +10,15 @@ function hc4(X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, tol=1e-5) 
         end
     end
 
-    new_constraints = Constraint{T}[]
+    #new_constraints = Constraint{T}[]
 
-    for i in 1:n
-        if !(invokelatest(constraints[i].C, X) ⊆ constraints[i].bound)
-            push!(new_constraints, constraints[i])
-        end
-    end
-    return new_constraints, X
+    #for i in 1:n
+    #    if !(invokelatest(constraints[i].C, X) ⊆ constraints[i].bound)
+    #        push!(new_constraints, constraints[i])
+    #    end
+    #end
+    #return new_constraints, X
+    return constraints, X
 end
 
 function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, tol=1e-5) where {N, T}
@@ -49,7 +50,7 @@ function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vecto
         end
         if i == 30
             return (false, point)    # returns a infeasible point
-        end        
+        end
     end
 
 end
@@ -99,10 +100,10 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
         end
 
 
-        output = generate_random_feasible_point(X, constraints)   # finding a feasible point in the interval box if there present any
+        status, output = generate_random_feasible_point(X, constraints)   # finding a feasible point in the interval box if there present any
 
-        if output[1]                           # output[1] is true if generate_random_feasible_point finds a feasible point
-            feas_point = output[2]
+        if status                           # output[1] is true if generate_random_feasible_point finds a feasible point
+            feas_point = output
             m = sup(f(Interval.(feas_point)))  # find candidate for upper bound of global minimum by just evaluating a feasible point in the interval box
 
             if m < global_min
@@ -164,9 +165,9 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
         take!(ibc_chnl)
     end
 
-    #lower_bound = minimum(inf.(f.(minimizers)))
+    lower_bound = minimum(inf.(f.(minimizers)))
 
-    return Interval(global_min, global_min), minimizers, info
+    return Interval(lower_bound, global_min), minimizers, info
 
 end
 
