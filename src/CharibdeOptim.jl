@@ -61,7 +61,7 @@ charibde_min/charibde_max find the global minimum/maximum value of the function 
 TODO: Fix the parallel implementation of charibde_min/max for Constrained Optimisation
 ```
 """
-function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
+function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-6, np = N*10, debug = false) where{N,T}
 
     worker_ids = Distributed.workers()
     if workers > 1
@@ -84,7 +84,7 @@ function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3,
 end
 
 
-function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
+function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, tol = 1e-6, np = N*10, debug = false) where{N,T}
 
     worker_ids = Distributed.workers()
     if workers > 1
@@ -107,12 +107,12 @@ function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Cons
 end
 
 
-function charibde_max(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
+function charibde_max(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-6, np = N*10, debug = false) where{N,T}
     bound, minimizers, info = charibde_min(x -> -f(x), X, workers = workers, tol = tol, np = np, debug = debug)
     return -bound, minimizers, info
 end
 
-function charibde_max(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, tol = 1e-3, np = N*10, debug = false) where{N,T}
+function charibde_max(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; workers = 2, tol = 1e-6, np = N*10, debug = false) where{N,T}
     bound, minimizers, info = charibde_min(x -> -f(x), X, constraints, workers = workers, tol = tol, np = np, debug = debug)
     return -bound, minimizers, info
 end
