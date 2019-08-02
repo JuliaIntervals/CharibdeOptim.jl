@@ -1,6 +1,6 @@
 module CharibdeOptim
 
-export constraint, charibde_min, charibde_max, ibc_maximise
+export constraint, charibde_min, charibde_max, ibc_maximise, diffevol_maximise
 export ibc_minimise, diffevol_minimise
 
 using IntervalArithmetic
@@ -10,16 +10,17 @@ using IntervalConstraintProgramming
 using ModelingToolkit
 using MathOptInterface
 using StaticArrays
+using MacroTools
 
 import Base: invokelatest, push!
 
 struct Constraint{T}
    bound::Interval{T}
-   C::BasicContractor
+   C
 end
 
 function constraint(vars, constraint_expr::Operation, bound::Interval{T}; epsilon = 1e-4) where{T}
-   C = BasicContractor(vars, constraint_expr)
+   C = Contractor(vars, constraint_expr)
    if diam(bound) == 0.0
        bound = Interval(bound.lo - epsilon, bound.hi + epsilon)
    end

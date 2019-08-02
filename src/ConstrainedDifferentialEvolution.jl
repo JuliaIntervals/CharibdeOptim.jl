@@ -81,7 +81,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
                global_min = f(pop_new[i])
                x_best = pop_new[i]
             end
-         end   
+         end
       end
 
       if global_min < temp
@@ -96,3 +96,9 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
    end
 
 end
+
+function diffevol_maximise(f::Function, X::IntervalBox{N, T}, constraints::Vector{Constraint{T}}, ibc_chnl::Union{Channel{Tuple{IntervalBox{N,T}, T}}, RemoteChannel{Channel{Tuple{IntervalBox{N,T}, T}}} },
+               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}}}; np = 10*N, debug = false ) where{N, T}
+
+            diffevol_minimise(x -> -f(x), X, constraints, ibc_chnl, diffevol_chnl, np = np, debug = debug)
+         end

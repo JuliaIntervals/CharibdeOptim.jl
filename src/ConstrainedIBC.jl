@@ -4,6 +4,7 @@ function hc4(X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, tol=1e-5) 
         X_temp = X
         for i in 1:n
             X = invokelatest(constraints[i].C,  constraints[i].bound, X)
+            println("Contracting by constraints ", X)
         end
         if isempty(X) || sum(dist.(X, X_temp)) < tol
             break
@@ -25,7 +26,10 @@ function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, c
     lb = -Inf
     while true
         X_temp = X
+        println("Uncontracted box: ", X)
+        println("global_min: ", global_min)
         X = invokelatest(C, -Inf..global_min, X)
+        println("Contracting the box by constraint f(X) < globla_min: ", X)
         lb = inf(f(X))
         constraints, X = hc4(X, constraints)
 
@@ -192,7 +196,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
 end
 
 
-function ibc_maximise(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; debug = false, tol = 1e-6) where{N, T}
-    bound, minimizer, info = ibc_minimise(x -> -f(x), X, constraints, debug = debug, tol = tol)
+function ibc_maximise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, constraints, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, tol = tol)
     return -bound, minimizer, info
 end
