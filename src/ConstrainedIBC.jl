@@ -122,9 +122,9 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
 
         status, output = generate_random_feasible_point(X, constraints)   # finding a feasible point in the interval box if there present any
 
-        if status                           # output[1] is true if generate_random_feasible_point finds a feasible point
+        if status                           # true if we got any feasible point
             feas_point = output
-            m = sup(f(Interval.(feas_point)))  # find candidate for upper bound of global minimum by just evaluating a feasible point in the interval box
+            m = sup(f(Interval.(feas_point)))  # find candidate for upper bound of global minimum by evaluating f on a feasible point
             if m < global_min
                 global_min = m
                 x_best = SVector(mid(X))
