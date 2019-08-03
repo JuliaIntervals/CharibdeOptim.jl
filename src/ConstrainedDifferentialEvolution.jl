@@ -76,11 +76,12 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
             end
          end
 
-
-         if f(pop_new[i]) < global_min
-            global_min = f(pop_new[i])
-            x_best = pop_new[i]
-         end
+         if c1 == length(constraints) || c2 == length(constraints)
+            if f(pop_new[i]) < global_min
+               global_min = f(pop_new[i])
+               x_best = pop_new[i]
+            end
+         end   
       end
 
       if global_min < temp
