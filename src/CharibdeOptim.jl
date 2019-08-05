@@ -16,7 +16,7 @@ import Base: invokelatest, push!
 
 struct Constraint{T}
    bound::Interval{T}
-   C
+   C::Contractor
 end
 
 function constraint(vars, constraint_expr::Operation, bound::Interval{T}; epsilon = 1e-4) where{T}

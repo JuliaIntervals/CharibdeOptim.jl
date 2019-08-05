@@ -17,6 +17,22 @@ addprocs(2)
       @test maximisers[1] ⊆ (1.99 .. 2.01) × (1.99 .. 2.01)
 end
 
+@testset "Using JuMP syntax for Constrained Optimisation" begin
+      model = Model(with_optimizer(CharibdeOptim.Optimizer))
+      @variable(model, -4 <= x <= 4)
+      @variable(model, -4 <= y <= 4)
+      @NLconstraint(model, x+y<=4)
+      @NLconstraint(model, 5<=x+3y<=9)
+      @NLobjective(model, Max, -(x-4)^2-(y-4)^2)
+      optimize!(model)
+
+      @test JuMP.termination_status(model) == MOI.OPTIMAL
+      @test JuMP.primal_status(model) == MOI.FEASIBLE_POINT
+      @test JuMP.objective_value(model) ⊆ -8.01 .. -7.99
+      @test JuMP.value(x) ⊆ (1.99 .. 2.01)
+      @test JuMP.value(y) ⊆ (1.99 .. 2.01)
+end        
+
 @testset "Using Interval bound and contract algorithm for Constrained Optimisation" begin
       vars = ModelingToolkit.@variables x y
       C1 = constraint(vars, x+y, -Inf..4)

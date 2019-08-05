@@ -4,7 +4,6 @@ function hc4(X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, tol=1e-5) 
         X_temp = X
         for i in 1:n
             X = invokelatest(constraints[i].C,  constraints[i].bound, X)
-            println("Contracting by constraints ", X)
         end
         if isempty(X) || sum(dist.(X, X_temp)) < tol
             break
@@ -26,10 +25,7 @@ function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, c
     lb = -Inf
     while true
         X_temp = X
-        println("Uncontracted box: ", X)
-        println("global_min: ", global_min)
         X = invokelatest(C, -Inf..global_min, X)
-        println("Contracting the box by constraint f(X) < globla_min: ", X)
         lb = inf(f(X))
         constraints, X = hc4(X, constraints)
 
@@ -85,8 +81,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
 
     vars = [Variable(Symbol(:(x[$i])))() for i in 1:N]
     g(x...) = f(x)
-    C = Contractor(vars, g)
-    println(C)
+    C = BasicContractor(vars, g)
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
     minimizers = IntervalBox{N,T}[]
