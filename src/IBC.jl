@@ -38,7 +38,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
     while !isempty(working)
 
         info.iterations= info.iterations + 1
-        
+
         if isready(ibc_chnl)
             from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
             if debug
@@ -124,7 +124,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
 end
 
-function ibc_maximise(f::Function, X::IntervalBox{N,T}; debug = false, tol=1e-6) where{N, T}
-    bound, minimizer, info = ibc_minimise(x -> -f(x), X, debug = debug, tol=1e-6)
+function ibc_maximise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, tol = tol)
     return -bound, minimizer, info
 end

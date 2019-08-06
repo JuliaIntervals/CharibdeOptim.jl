@@ -79,12 +79,11 @@ end
 
 function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
 
-    vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
+    vars = [Variable(Symbol(:(x[$i])))() for i in 1:N]
     g(x...) = f(x)
     C = BasicContractor(vars, g)
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
-
     minimizers = IntervalBox{N,T}[]
     global_min = ∞  # upper bound
 
@@ -192,7 +191,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
 end
 
 
-function ibc_maximise(f::Function, X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; debug = false, tol = 1e-6) where{N, T}
-    bound, minimizer, info = ibc_minimise(x -> -f(x), X, constraints, debug = debug, tol = tol)
+function ibc_maximise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, constraints, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, tol = tol)
     return -bound, minimizer, info
 end
