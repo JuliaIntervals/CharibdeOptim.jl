@@ -27,10 +27,11 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
     C = BasicContractor(vars, g)
 
 
-    working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
+    working = [(X, inf(f(X)))] # list of boxes with corresponding lower bound, arranged according to selected structure :
 
     minimizers = IntervalBox{N,T}[]
     global_min = ∞  # upper bound
+    x_best = mid(X)
 
     info = Information(0, 0, 0)
     num_bisections = 0
@@ -44,10 +45,15 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
             if debug
                 println("Box recevied from DifferentialEvolution: ", from_diff)
             end
-            global_min = min(from_diff[2], global_min)
+            if from_diff[2] < global_min
+                x_best = from_diff[1]
+                global_min = from_diff[2]
+                working = sort(working, by = x-> maxdist(x_best, x[1]))
+            end
+
             info.de_to_ibc = info.de_to_ibc + 1
         end
-        (X, X_min) = popfirst!(working)
+        (X, X_min) = pop!(working)
 
         if debug
             println("New search-space : ", X)
@@ -71,12 +77,14 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
         if m < global_min
             global_min = m
             x_best = SVector(mid(X))
+            working = sort(working, by = x-> maxdist(x_best, x[1]))
             if diffevol_chnl != Nothing
                 if debug
                     println("Box send to DifferentialEvolution: ", x_best )
                 end
                 if info.iterations % 200 == 0
-                    put!(diffevol_chnl, (x_best, global_min, X))  # sending best individual to diffevol
+                   x_big = convex_hull(working)
+                    put!(diffevol_chnl, (x_best, global_min, x_big))  # sending best individual to diffevol
                 else
                     put!(diffevol_chnl, (x_best, global_min, nothing))
                 end
@@ -85,7 +93,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
         end
 
 
-        filter_elements!(working , (X, global_min) )   # Remove all boxes whose lower bound is greater than the current one:
+        working = filter(x-> x[2] < global_min, working)   # Remove all boxes whose lower bound is greater than the current one:
 
         if diam(X) < tol
             push!(minimizers, X)
@@ -119,7 +127,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
     lower_bound = minimum(inf.(f.(minimizers)))
 
-    return Interval(lower_bound,global_min), minimizers, info
+    return Interval(lower_bound,global_min), minimizers, info, x_best
 
 
 end

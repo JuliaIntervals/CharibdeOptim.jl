@@ -12,7 +12,7 @@ using MathOptInterface
 using StaticArrays
 using MacroTools
 
-import Base: invokelatest, push!
+import Base: invokelatest, push!, filter
 
 struct Constraint{T}
    bound::Interval{T}
