@@ -169,13 +169,6 @@ end
 
 substitute_variables(arg) = arg
 
-function substitute_variables(arg::Real)
-    if arg == floor(arg)
-        return Int(arg)
-    else
-        return arg
-    end
-end
 
 function substitute_symbols(expr::Expr)
     if expr.head == :ref && length(expr.args) == 2 && expr.args[1] == :x
@@ -189,13 +182,7 @@ function substitute_symbols(expr::Expr)
 end
 substitute_symbols(arg) = arg
 
-function substitute_symbols(arg::Real)
-    if arg == floor(arg)
-        return Int(arg)
-    else
-        return arg
-    end
-end
+
 function preprocess!(ex)
     isa(ex, Symbol) && return Variable(ex; known=false)()
     if isa(ex, Expr) && ex.head === :call
