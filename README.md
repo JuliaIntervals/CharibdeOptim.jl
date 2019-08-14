@@ -33,5 +33,7 @@ Departamento de Física, Facultad de Ciencias, Universidad Nacional Autónoma de
 Researcher at Fraunhofer ITWM
 
 ## References:
-- [Charibde - Archive ouverte HAL](https://hal.archives-ouvertes.fr/hal-01168096/document)
-- [DOCTORAT DE L'UNIVERSITÉ DE TOULOUSE](http://ethesis.inp-toulouse.fr/archive/00002966/01/vanaret.pdf)
+- Hybridization of Interval CP and Evolutionary
+Algorithms for Optimizing Difficult Problems
+by Charlie Vanaret, Jean-Baptiste Gotteland, Nicolas Durand, Jean-Marc Alliot[Charibde - Archive ouverte HAL](https://hal.archives-ouvertes.fr/hal-01168096/document) 
+- Hybridisataion of evolutionary algorithms and methods of intervals for the optimization of difficult problems [DOCTORATE OF THE UNIVERSITY OF TOULOUSE](http://ethesis.inp-toulouse.fr/archive/00002966/01/vanaret.pdf) by Charlie Vanaret
