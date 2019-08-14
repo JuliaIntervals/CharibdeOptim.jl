@@ -16,6 +16,7 @@ The package also allows us to use just *Interval Branch & Contract* algorithm to
 
 The package can also be used through JuMP syntax.
 
+
 ## Documentation
 Documentation for the package is available
 The best way to learn how to use the package is to look at the example folder.
@@ -35,5 +36,5 @@ Researcher at Fraunhofer ITWM
 ## References:
 - Hybridization of Interval CP and Evolutionary
 Algorithms for Optimizing Difficult Problems
-by Charlie Vanaret, Jean-Baptiste Gotteland, Nicolas Durand, Jean-Marc Alliot[Charibde - Archive ouverte HAL](https://hal.archives-ouvertes.fr/hal-01168096/document) 
+by Charlie Vanaret, Jean-Baptiste Gotteland, Nicolas Durand, Jean-Marc Alliot[Charibde - Archive ouverte HAL](https://hal.archives-ouvertes.fr/hal-01168096/document)
 - Hybridisataion of evolutionary algorithms and methods of intervals for the optimization of difficult problems [DOCTORATE OF THE UNIVERSITY OF TOULOUSE](http://ethesis.inp-toulouse.fr/archive/00002966/01/vanaret.pdf) by Charlie Vanaret

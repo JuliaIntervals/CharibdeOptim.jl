@@ -54,3 +54,63 @@ and returns an object of type `Constraint`.
 Note: All these `Constraint` objects for every constraint should be define on each worker using macro `@everywhere`.
 
 After defining every constraint using function `constraint` you need to pass all returned objects (of type `Constraint`) in an array along with objective function and search-space in `charibde_max` or `charibde_min` according to the required optimum value (minimum or maximum).
+
+
+## Usage
+
+Functions `charibde_min` and `charibde_max` are provided to find the global minimum or maximum, respectively, of a standard Julia function f of one or several variables.
+
+They return an Interval that is guaranteed to contain the global minimum (maximum), a Vector of Intervals or IntervalBoxes whose union contains all the minimisers and an object of type `Information` which have three feilds (`de_to_ibc`, `ibc_to_de` and `iterations`) gives information about how many updates were sent from DE to IBC , from IBC to DE and how many total iterations occurred in IBC .
+
+# Examples
+
+# Unconstrained Optimisation
+
+```jldoctest
+julia> using Distributed
+
+julia> addprocs(2)
+2-element Array{Int64,1}:
+ 2
+ 3
+
+julia> @everywhere using CharibdeOptim
+
+julia> @everywhere using IntervalArithmetic
+
+julia> charibde_min(X->((x,y)=X;x^3 + 2y + 5), IntervalBox(2..4, 2..3))
+([17, 17.0001], IntervalBox{2,Float64}[[2, 2.00001] × [2, 2.00001], [2, 2.00001] × [2, 2.00001]], CharibdeOptim.Information(23, 22, 23))
+
+julia> (global_min, minimisers, info) = charibde_min(X->((x,y)=X;x^3 + 2y + 5), IntervalBox(2..4, 2..3))
+([17, 17.0001], IntervalBox{2,Float64}[[2, 2.00001] × [2, 2.00001], [2, 2.00001] × [2, 2.00001], [2, 2.00001] × [2, 2.00001]], CharibdeOptim.Information(26, 26, 26))
+
+julia> global_min
+[17, 17.0001]
+
+julia> minimisers
+3-element Array{IntervalBox{2,Float64},1}:
+ [2, 2.00001] × [2, 2.00001]
+ [2, 2.00001] × [2, 2.00001]
+ [2, 2.00001] × [2, 2.00001]
+
+julia> info
+CharibdeOptim.Information(26, 26, 26)
+```
+
+# Constrained Optimisation
+
+```julia
+julia> @everywhere using ModelingToolkit
+
+julia> @everywhere vars = ModelingToolkit.@variables x y
+
+julia> @everywhere C1 = constraint(vars, x+y, -Inf..4)
+
+julia> @everywhere C2 = constraint(vars, x+3y, -Inf..9)
+
+julia> (maxima, maximisers, info) = charibde_max(X->((x,y)=X;-(x-4)^2-(y-4)^2), IntervalBox(-4..4, -4..4), [C1, C2])
+([-8, -7.99999], IntervalBox{2,Float64}[[2.00243, 2.00245] × [1.99755, 1.99757], [2.00237, 2.00238] × [1.99762, 1.99763], [1.99692, 1.99693] × [2.00307, 2.00308], [1.99699, 1.997] × [2.003, 2.00301], [2.00231, 2.00232] × [1.99768, 1.99769], [2.00224, 2.00225] × [1.99775, 1.99776], [1.99706, 1.99707] × [2.00293, 2.00294], [2.00291, 2.00292] × [1.99708, 1.99709], [2.00209, 2.0021] × [1.9979, 1.99791], [2.00216, 2.00217] × [1.99783, 1.99784]  …  [2.0008, 2.00081] × [1.99919, 1.9992], [1.9992, 1.99921] × [2.00079, 2.0008], [2.00077, 2.00078] × [1.99922, 1.99923], [1.99923, 1.99924] × [2.00076, 2.00077], [1.99922, 1.99923] × [2.00077, 2.00078], [2.00071, 2.00072] × [1.99928, 1.99929], [2.00073, 2.00074] × [1.99926, 1.99927], [1.99924, 1.99925] × [2.00075, 2.00076], [1.99925, 1.99926] × [2.00074, 2.00075], [2.00076, 2.00077] × [1.99923, 1.99924]], CharibdeOptim.Information(50, 3, 5777))
+
+julia> maxima
+[-8, -7.99999]
+```
