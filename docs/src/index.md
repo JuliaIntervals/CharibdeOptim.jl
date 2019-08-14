@@ -62,11 +62,11 @@ Functions `charibde_min` and `charibde_max` are provided to find the global mini
 
 They return an Interval that is guaranteed to contain the global minimum (maximum), a Vector of Intervals or IntervalBoxes whose union contains all the minimisers and an object of type `Information` which have three feilds (`de_to_ibc`, `ibc_to_de` and `iterations`) gives information about how many updates were sent from DE to IBC , from IBC to DE and how many total iterations occurred in IBC .
 
-# Examples
+### Examples
 
-# Unconstrained Optimisation
+#### Unconstrained Optimisation
 
-```jldoctest
+```julia
 julia> using Distributed
 
 julia> addprocs(2)
@@ -97,7 +97,7 @@ julia> info
 CharibdeOptim.Information(26, 26, 26)
 ```
 
-# Constrained Optimisation
+#### Constrained Optimisation
 
 ```julia
 julia> @everywhere using ModelingToolkit
