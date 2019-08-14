@@ -8,16 +8,17 @@
 [![Coveralls](https://coveralls.io/repos/github/yashcodes/CharibdeOptim.jl/badge.svg?branch=master)](https://coveralls.io/github/yashcodes/CharibdeOptim.jl?branch=master)
 [![Build Status](https://api.cirrus-ci.com/github/yashcodes/CharibdeOptim.jl.svg)](https://cirrus-ci.com/github/yashcodes/CharibdeOptim.jl)
 
-This Julia package is for to solve mathematical optimisation problems of both unconstrained as well as constrained kind. The package uses the approach named *Charibde* in which it uses two algorithm *Differential Evolution* and *Interval Branch & Contract algorithm* to achieve solution which is quite fast to get and guaranteed correct in case of difficult problems than using just any one of the algorithm among them two.
+This Julia package is for to solve mathematical optimisation problems of both unconstrained as well as constrained kind. The package uses the approach named *Charibde* in which it uses two parallel running algorithms *Differential Evolution* and *Interval Branch & Contract algorithm* to achieve solution of any difficult problem.
 
-The package makes these two algorithm run in parallel on two different processors (means: there should be atleast 2 workers present on that julia session) of the machine while being in contact (i.e share the best known solution with each other) with one another through remotechannels.
+The package makes these two algorithms run in parallel either on same worker (processor) or on two different workers while maintaining contact with one another through `channels` or `remotechannels`.
 
-The package also allows us to use just *Interval Branch & Contract* algorithm to solve the problems rather than using Charibde.
+The package also allows us to use just *Interval Branch & Contract* algorithm to solve the problems..
 
-The package can also be use through JuMP syntax.
+The package can also be used through JuMP syntax.
 
 ## Documentation
 Documentation for the package is available
+The best way to learn how to use the package is to look at the example folder.
 
 ## Author
 
