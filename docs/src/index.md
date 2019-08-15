@@ -125,6 +125,43 @@ julia> info
 CharibdeOptim.Information(26, 26, 26)
 ```
 
+##### Using Charibde through JuMP
+
+```julia
+julia> using JuMP
+
+julia> using CharibdeOptim
+
+julia> model = Model(with_optimizer(CharibdeOptim.Optimizer))
+WARNING: using JuMP.parse_constraint in module CharibdeOptim conflicts with an existing identifier.
+WARNING: using JuMP.VariableInfo in module CharibdeOptim conflicts with an existing identifier.
+A JuMP Model
+Feasibility problem with:
+Variables: 0
+Model mode: AUTOMATIC
+CachingOptimizer state: EMPTY_OPTIMIZER
+Solver name: CharibdeOptim
+
+julia> @variable(model, 1<=x<=2)
+x
+
+julia> @variable(model, 1<=y<=2)
+y
+
+julia> @NLobjective(model, Min, x^2+y^2)
+
+julia> optimize!(model)
+
+julia> JuMP.objective_value(model)
+2.0
+
+julia> JuMP.value(x)
+1.0
+
+julia> JuMP.value(y)
+1.0
+```
+
 #### Constrained Optimisation
 
 ##### Using IBC
@@ -167,4 +204,36 @@ julia> (maxima, maximisers, info) = charibde_max(X->((x,y)=X;-(x-4)^2-(y-4)^2), 
 
 julia> maxima
 [-8, -7.99999]
+```
+##### Using Charibde through JuMP
+
+```julia
+julia> using JuMP, CharibdeOptim
+
+julia> model = Model(with_optimizer(CharibdeOptim.Optimizer, debug = true))
+A JuMP Model
+Feasibility problem with:
+Variables: 0
+Model mode: AUTOMATIC
+CachingOptimizer state: EMPTY_OPTIMIZER
+Solver name: CharibdeOptim
+
+julia> @variable(model, 1<=x<=2)
+x
+
+julia> @variable(model, 1<=y<=2)
+y
+
+julia> @NLconstraint(model, x+y<=4)
+(x + y) - 4.0 ≤ 0
+
+julia> @NLconstraint(model, 5<=x+3y<=9)
+5 ≤ x + 3.0 * y ≤ 9
+
+julia> @NLobjective(model, Max, -(x-4)^2-(y-4)^2)
+
+julia> optimize!(model)
+
+julia>julia> JuMP.objective_value(model)
+-8.000002343536934
 ```
