@@ -39,7 +39,7 @@ While using the package through JuMP, you really not have to care about all thes
    - Advised to keep it around 10 to 20 times the dimension of search-space.
    - Default is set to 10 times the dimension of search-space.
 5. `debug`
-   - You have to set it to `true` to access debug mode of .
+   - You have to set it to `true` to access debug mode of.
 
 ## Acknowledge constraints
 
@@ -65,6 +65,29 @@ They return an Interval that is guaranteed to contain the global minimum (maximu
 ### Examples
 
 #### Unconstrained Optimisation
+
+##### Using IBC
+
+```julia
+julia> using CharibdeOptim
+
+julia> using IntervalArithmetic
+
+julia> (global_min, minimisers, info)= ibc_minimise(X->((x,y)= X;x^2 + y^2), IntervalBox(2..3, 3..4))
+([13, 13.0001], IntervalBox{2,Float64}[[2, 2.00001] × [3, 3.00001], [2, 2.00001] × [3, 3.00001]], CharibdeOptim.Information(0, 0, 42))
+
+julia> global_min
+[13, 13.0001]
+
+julia> minimisers
+2-element Array{IntervalBox{2,Float64},1}:
+ [2, 2.00001] × [3, 3.00001]
+ [2, 2.00001] × [3, 3.00001]
+
+julia> info
+CharibdeOptim.Information(0, 0, 42)
+```
+##### Using Charibde
 
 ```julia
 julia> using Distributed
@@ -98,6 +121,32 @@ CharibdeOptim.Information(26, 26, 26)
 ```
 
 #### Constrained Optimisation
+
+##### Using IBC
+
+```julia
+julia> using ModelingToolkit
+
+julia> vars = ModelingToolkit.@variables x y
+(x(), y())
+
+julia> C1 = constraint(vars, x+y, -Inf..4)
+CharibdeOptim.Constraint{Float64}([-∞, 4], Contractor in 2 dimensions:
+  - forward pass contracts to 1 dimensions
+  - variables: Symbol[:x, :y]
+  - expression: x() + y())
+
+julia> C2 = constraint(vars, x+3y, -Inf..9)
+CharibdeOptim.Constraint{Float64}([-∞, 9], Contractor in 2 dimensions:
+  - forward pass contracts to 1 dimensions
+  - variables: Symbol[:x, :y]
+  - expression: x() + 3 * y())
+
+julia> (maxima, maximisers, info) = ibc_maximise(X->((x,y)=X;-(x-4)^2-(y-4)^2), IntervalBox(-4..4, -4..4),[C1, C2])
+([-8.00001, -7.99999], IntervalBox{2,Float64}[[1.99762, 1.99763] × [2.00237, 2.00238], [1.99768, 1.99769] × [2.00231, 2.00232], [2.00227, 2.00228] × [1.99772, 1.99773], [2.00221, 2.00222] × [1.99778, 1.99779], [1.99791, 1.99792] × [2.00208, 2.00209], [1.99797, 1.99798] × [2.00202, 2.00203], [1.9972, 1.99721] × [2.00279, 2.0028], [1.99739, 1.9974] × [2.0026, 2.00261], [1.99727, 1.99728] × [2.00272, 2.00273], [2.00212, 2.00213] × [1.99787, 1.99788]  …  [1.9993, 1.99931] × [2.00069, 2.0007], [1.99931, 1.99932] × [2.00068, 2.00069], [2.00068, 2.00069] × [1.99931, 1.99932], [2.00069, 2.00071] × [1.99929, 1.99931], [1.99928, 1.99929] × [2.00071, 2.00072], [2.00071, 2.00072] × [1.99928, 1.99929], [2.00075, 2.00076] × [1.99924, 1.99925], [2.00072, 2.00073] × [1.99927, 1.99928], [1.99932, 1.99933] × [2.00067, 2.00068], [2.0007, 2.00071] × [1.99929, 1.9993]], CharibdeOptim.Information(0, 0, 5827))
+```
+
+##### Using Charibde
 
 ```julia
 julia> @everywhere using ModelingToolkit
