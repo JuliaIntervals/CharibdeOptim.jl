@@ -1,0 +1,26 @@
+name = "CharibdeOptim"
+uuid = "be8f459e-2180-59b5-a986-74dabacdd8e3"
+
+[compat]
+IntervalArithmetic = "≥ 0.15.0"
+IntervalOptimisation = "≥ 0.3.0"
+ModelingToolkit = "≥ 0.2.0"
+julia = "≥ 1.1.0"
+
+[deps]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
+IntervalConstraintProgramming = "138f1668-1576-5ad7-91b9-7425abbf3153"
+IntervalOptimisation = "c7c68f13-a4a2-5b9a-b424-07d005f8d9d2"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+ModelingToolkit = "961ee093-0014-501f-94e3-6117800e7a78"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[extras]
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test", "Distributed"]
