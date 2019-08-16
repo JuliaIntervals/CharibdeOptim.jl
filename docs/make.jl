@@ -2,16 +2,19 @@ using Documenter, CharibdeOptim
 
 makedocs(
     modules = [CharibdeOptim],
-    doctest = true,
     format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
-    pages=["Home" => "index.md"],
     sitename = "CharibdeOptim.jl",
-    authors = "Yashvardhan Sharma",
+    authors  = "Yashvardhan Sharma",
+    pages = [
+        "Home" => "index.md"
+         ]
 )
 
-deploydocs(;
-    repo="github.com/yashcodes/CharibdeOptim.jl",
+deploydocs(
+    repo = "github.com/yashcodes/CharibdeOptim.jl.git",
     target = "build",
     deps = nothing,
-    make = nothing,
+    make = nothing
 )
+
+

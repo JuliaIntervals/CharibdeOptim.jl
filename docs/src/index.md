@@ -6,20 +6,22 @@ The package also provides the function `ibc_minimise` and `ibc_maximise` to use 
 
 To run Charibde on two workers(processors) there are few requirements
 
-1. The Julia session should have at least 2 more workers other than the master processor with package `CharibdeOptim` loaded on them, which can we have through like this
-  ```
+1. The Julia session should have at least 2 more workers other than the master processor with package `CharibdeOptim` loaded on them,  which can we have through like this
+  ```julia
   julia> using Distributed
   julia> addprocs(2)
   julia> @everywhere using CharibdeOptim
-  ```  
-2. Objective function and Search - Space (in form of `IntervalBox`) should be defined on both of the workers by using macro `@everywhere`, like this
   ```
+2. Objective function and Search - Space (in form of `IntervalBox`) should be defined on both of the workers by using macro `@everywhere`, like this
+  ```julia
   julia> @everywhere using IntervalArithmetic
   julia> @everywhere X = IntervalBox(4..5, 4..5)
   julia> @everyhwere f = X->((x,y) = X; x^2 + y^2)
   ```
 And finally you can call `charibde_min` or `charibde_max` according to the required optimum value
- `julia> charibde_min(f, X)`
+ ```julia
+ julia> charibde_min(f, X)
+ ```
 
 While using the package through JuMP, you really not have to care about all these, you just have to tell the number of workers (through `workers` keyword argument which is already set to 2) on them you want to run *Charibde* and the package automatically add required number of workers and load and define all the required packages and stuff on them.  
 
