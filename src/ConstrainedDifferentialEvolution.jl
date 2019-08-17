@@ -85,7 +85,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
       end
 
       if global_min < temp
-         best_box = (IntervalBox(Interval.(x_best)), global_min)
+         best_box = (x_best, global_min)
          put!(ibc_chnl, best_box)   #sending the best individual to ibc_minimise
          if debug
             println("Box send to IBC: ", best_box)
