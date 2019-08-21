@@ -38,7 +38,6 @@ include("IBC.jl")
 include("DifferentialEvolution.jl")
 include("ConstrainedDifferentialEvolution.jl")
 include("ConstrainedIBC.jl")
-include("MaxDist.jl")
 include("BoundEnsure.jl")
 include("GenerateRandom.jl")
 
