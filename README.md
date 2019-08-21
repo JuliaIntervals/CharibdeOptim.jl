@@ -18,8 +18,7 @@ The package can also be used through JuMP syntax.
 
 
 ## Documentation
-Documentation for the package is available
-The best way to learn how to use the package is to look at the example folder.
+Documentation for the package is available. Example of some difficult problems are present in the Example folder.
 
 ## Author
 
