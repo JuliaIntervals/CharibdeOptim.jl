@@ -47,8 +47,20 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
             global_min = min(from_diff[2], global_min)
             info.de_to_ibc = info.de_to_ibc + 1
         end
+
         (X, X_min) = popfirst!(working)
-        
+        g = ForwardDiff.gradient(f, X)
+        (lbb, fcb, cb) = bauman_form(X, f, g)      # ----- second order form
+
+        if global_min > lbb
+            lb = max(lb, lbb)
+            if fcb < global_min:
+                global_min = fcb
+                x_best = SVector(cb)
+            end
+        else
+            continue
+        end                                        # ------
 
         if debug
             println("New search-space : ", X)

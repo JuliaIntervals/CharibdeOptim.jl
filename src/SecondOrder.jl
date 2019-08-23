@@ -22,18 +22,4 @@ function bauman_form(X::T, f::Function, g::Array{Interval{Float64},1}) where{T}
 
     return (lbb, f(cb...), cb)
 
-
-
-function second_order(X::T, f::Function, lb, ub, g::Array{Interval{Float64},1}) where{T}
-
-    (lbb, fcb, cb) = bauman_form(X, f, g)
-    if ub > lbb
-        lb = max(lb, lbb)
-        if fcb < ub:
-            ub = fcb
-        end
-    else
-        
-    end
-
-    return (lb, ub, cb)
+end 
