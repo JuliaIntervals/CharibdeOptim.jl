@@ -39,7 +39,8 @@ end
 
 function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vector{Constraint{T}}) where{N, T}
     for i in 1:30
-        point = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)]      # discover a random point in interval box X
+
+        point = SVector{N,T}([X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)])      # discover a random point in interval box X
         for j in 1:length(constraints)
             if !(invokelatest(constraints[j].C, point) ⊆ constraints[j].bound)
                 break
@@ -55,27 +56,6 @@ function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vecto
 
 end
 
-function convex_hull(vec::Vector{IntervalBox{N,T}}) where{N, T}
-
-    x_big = Interval{T}[]
-    num_variables = N
-    num_boxes = length(vec)
-
-    for i in 1:num_variables
-        lower_bound = Inf
-        upper_bound = -Inf
-        for j in 1:num_boxes
-            if vec[j][i].lo < lower_bound
-                lower_bound = vec[j][i].lo
-            end
-            if upper_bound < vec[j][i].hi
-                upper_bound = vec[j][i].hi
-            end
-        end
-        append!(x_big, Interval(lower_bound, upper_bound))
-    end
-    return IntervalBox(x_big...)
-end
 
 function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
 
@@ -132,7 +112,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
                         println("Box send to DifferentialEvolution: ", x_best )
                     end
                     if info.iterations % 200 == 0
-                       x_big = convex_hull(working.data)
+                       x_big = union(working.data)
                         put!(diffevol_chnl, (x_best, global_min, x_big))  # sending best individual to diffevol
                     else
                         put!(diffevol_chnl, (x_best, global_min, nothing))

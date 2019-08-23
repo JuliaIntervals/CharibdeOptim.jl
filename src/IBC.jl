@@ -119,7 +119,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
     lower_bound = minimum(inf.(f.(minimizers)))
 
-    return Interval(lower_bound,global_min), minimizers, info
+    return Interval(lower_bound, global_min), minimizers, info
 
 
 end
