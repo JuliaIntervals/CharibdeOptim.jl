@@ -13,6 +13,7 @@ using StaticArrays
 using MacroTools
 
 import Base: invokelatest, push!
+import ForwardDiff: gradient
 
 struct Constraint{T}
    bound::Interval{T}
@@ -40,6 +41,7 @@ include("ConstrainedDifferentialEvolution.jl")
 include("ConstrainedIBC.jl")
 include("BoundEnsure.jl")
 include("GenerateRandom.jl")
+include("SecondOrder.jl")
 
 
 function create_channels(X::IntervalBox{N, T}, workers::Int64) where{N, T}

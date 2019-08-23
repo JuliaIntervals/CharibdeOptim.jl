@@ -104,10 +104,22 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
         end
         (X, X_min) = popfirst!(working)
 
+        gra = gradient(f, X.v)
+        (lbb, fcb, cb) = bauman_form(X, f, gra)      # ----- second order form
+
+        if global_min > lbb
+            X_min = max(X_min, lbb)
+            if fcb < global_min 
+                global_min = fcb
+                x_best = cb
+            end
+        else
+            continue
+        end
+
         if debug
             println("New search-space : ", X)
         end
-
 
         X_min, X, constraints = contraction(f, C, global_min, X, constraints)
 

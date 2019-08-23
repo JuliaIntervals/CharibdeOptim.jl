@@ -1,7 +1,7 @@
-function bauman_form(X::T, f::Function, g::Array{Interval{Float64},1}) where{T}
+function bauman_form(X::T, f::Function, g) where{T}
     cb = Float64[]
 
-    for i in 1:length(G)
+    for i in 1:length(g)
         if g[i] >= 0
             append!(cb, X[i].lo)
         elseif g[i] <= 0
@@ -18,8 +18,11 @@ function bauman_form(X::T, f::Function, g::Array{Interval{Float64},1}) where{T}
         sum2 = sum2 + (g[i].lo)*(X[i].hi - cb[i])
     end
 
-    lbb = f(cb...) + min(sum1, sum2)
+    func_val = f(cb)
+    static_cb = SVector{length(cb)}(cb)
 
-    return (lbb, f(cb...), cb)
+    lbb = func_val + min(sum1, sum2)
 
-end 
+    return (lbb, func_val, static_cb)
+
+end
