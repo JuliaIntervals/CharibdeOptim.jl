@@ -1,4 +1,4 @@
-function bauman_form(X::T, f::function, g::Array{Interval{Float64},1}) where{T}
+function bauman_form(X::T, f::Function, g::Array{Interval{Float64},1}) where{T}
     cb = Float64[]
 
     for i in 1:length(G)
@@ -12,25 +12,28 @@ function bauman_form(X::T, f::function, g::Array{Interval{Float64},1}) where{T}
     end
 
     (sum1, sum2)  = (0, 0)
+
     for i in 1:length(g)
         sum1 = sum1 + (g[i].hi)*(X[i].lo - cb[i])
         sum2 = sum2 + (g[i].lo)*(X[i].hi - cb[i])
     end
 
-    lb = f(cb...) + min(sum1, sum2)
+    lbb = f(cb...) + min(sum1, sum2)
 
-    return (lb, f(cb...), cb)
+    return (lbb, f(cb...), cb)
 
 
 
-function second_order(X::T, f::function, lb, ub, g::Array{Interval{Float64},1}) where{T}
+function second_order(X::T, f::Function, lb, ub, g::Array{Interval{Float64},1}) where{T}
 
     (lbb, fcb, cb) = bauman_form(X, f, g)
-    if ub > lbb:
+    if ub > lbb
         lb = max(lb, lbb)
         if fcb < ub:
             ub = fcb
         end
+    else
+        
     end
 
-    return (lb, ub)
+    return (lb, ub, cb)

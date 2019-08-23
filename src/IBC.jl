@@ -48,6 +48,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
             info.de_to_ibc = info.de_to_ibc + 1
         end
         (X, X_min) = popfirst!(working)
+        
 
         if debug
             println("New search-space : ", X)
