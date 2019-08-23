@@ -1,4 +1,4 @@
-function bauman_form(X::T, f::Function, g) where{T}
+function bauman_form(X::IntervalBox{N, T}, f::Function, g::SVector{N, Interval{T}}) where{N, T}
     cb = Float64[]
 
     for i in 1:length(g)

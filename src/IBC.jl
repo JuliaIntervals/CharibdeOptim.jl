@@ -53,14 +53,14 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
         gra = gradient(f, X.v)
         (lbb, fcb, cb) = bauman_form(X, f, gra)      # ----- second order form
 
-        if global_min > lbb
+        if global_min < lbb
+            continue
+        else
             X_min = max(X_min, lbb)
             if fcb < global_min
                 global_min = fcb
                 x_best = cb
             end
-        else
-            continue
         end                                        # ------
 
         if debug

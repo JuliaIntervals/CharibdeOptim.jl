@@ -77,6 +77,16 @@ function convex_hull(vec::Vector{IntervalBox{N,T}}) where{N, T}
     return IntervalBox(x_big...)
 end
 
+
+function check_feasiblity(point::SVector{N,T}, constraints::Vector{Constraint{T}}) where{N, T}
+    for constraint in constraints
+        if !(invokelatest(constraint.C, point) ∈ constraint.bound)
+            return false
+        end
+    end
+    return true
+end
+
 function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
 
     vars = [Variable(Symbol(:(x[$i])))() for i in 1:N]
@@ -109,7 +119,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
 
         if global_min > lbb
             X_min = max(X_min, lbb)
-            if fcb < global_min 
+            if fcb < global_min && check_feasiblity(cb, constraints) 
                 global_min = fcb
                 x_best = cb
             end
