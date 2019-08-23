@@ -1,8 +1,8 @@
 using Distributed
 addprocs(2)
 
-@everyhwere using CharibdeOptim
-@everyhwere using ModelingToolkit
+@everywhere using CharibdeOptim
+@everywhere using ModelingToolkit
 @everywhere using IntervalArithmetic
 
 # --- Michalewicz Problem ---
@@ -20,10 +20,11 @@ end
 
 # --- Sine Envolope Problem ---
 
-@everyhwere function sine_envolope(X)
+@everywhere function sine_envolope(X)
       sum = 0
       for i in 1:length(X)-1
-            sum = sum + ( 0.5 + ( sin(√(X[i+1]^2 + X[i]^2) -0.5)/(0.001*(X[i+1]^2 + X[i]^2) + 1) )^2)
+            temp = X[i+1]^2 + X[i]^2
+            sum = sum + 0.5 + (sin(√temp -0.5)/(0.001*temp + 1))^2
       end
       return -sum
 end
@@ -65,8 +66,10 @@ end
 
 @everywhere function rana(X)
       sum = 0
-      for i in 1: length(X)-1
-            sum = sum + (X[i]*cos(√(abs(X[i+1] + X[i] + 1))) * sin(√(abs(X[i+1] - X[i] + 1))) + (1+ X[i+1]) * sin(√(abs(X[i+1] + X[i] + 1))) * cos(√(abs(X[i+1] - X[i] + 1))))
+      for i in 1:length(X)-1
+            temp1 = √abs(X[i+1] + X[i] + 1)
+            temp2 = √abs(X[i+1] - X[i] + 1)
+            sum = sum + (X[i]*cos(temp1) * sin(temp2) + (1+ X[i+1]) * sin(temp1) * cos(temp2))
       end
       return -sum
 end
@@ -89,8 +92,8 @@ end
       return -sum
 end
 
-@everyhwere vars = ModelingToolkit.@variables x y w z
+@everywhere vars = ModelingToolkit.@variables x y w z
 @everywhere C1 = constraint(vars , x*y*w*z, Interval(0.75, Inf))
-@everyhwere C2 = constriant(vars , x+y+z+w, Interval(-Inf, 30))
+@everywhere C2 = constraint(vars , x+y+z+w, Interval(-Inf, 30))
 
 (global_min, minimisers, information) = charibde_min(keane, IntervalBox(0..10, 4), [C1, C2])
