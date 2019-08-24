@@ -1,17 +1,20 @@
 using Documenter, CharibdeOptim
 
-makedocs(;
-    modules=[CharibdeOptim],
-    format=Documenter.HTML(),
-    pages=[
-        "Home" => "index.md",
-    ],
-    repo="https://github.com/yashcodes/CharibdeOptim.jl/blob/{commit}{path}#L{line}",
-    sitename="CharibdeOptim.jl",
-    authors="Chris de Graaf, Invenia Technical Computing Corporation",
-    assets=String[],
+makedocs(
+    modules = [CharibdeOptim],
+    format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
+    sitename = "CharibdeOptim.jl",
+    authors  = "Yashvardhan Sharma",
+    pages = [
+        "Home" => "index.md"
+         ]
 )
 
-deploydocs(;
-    repo="github.com/yashcodes/CharibdeOptim.jl",
+deploydocs(
+    repo = "github.com/yashcodes/CharibdeOptim.jl.git",
+    target = "build",
+    deps = nothing,
+    make = nothing
 )
+
+
