@@ -18,7 +18,9 @@ The package can also be used through JuMP syntax.
 
 
 ## Documentation
-Documentation for the package is available. Example of some difficult problems are present in the Example folder.
+Documentation for the package is available [here](https://yashcodes.github.io/CharibdeOptim.jl/docs/src/index.html).
+ 
+Example of some difficult problems are present in the Example folder.
 
 ## Author
 
