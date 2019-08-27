@@ -238,6 +238,6 @@ julia> @NLobjective(model, Max, -(x-4)^2-(y-4)^2)
 
 julia> optimize!(model)
 
-julia>julia> JuMP.objective_value(model)
+julia> JuMP.objective_value(model)
 -8.000002343536934
 ```
