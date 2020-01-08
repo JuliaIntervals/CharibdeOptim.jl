@@ -31,7 +31,7 @@ end
       @test JuMP.objective_value(model) ⊆ -8.01 .. -7.99
       @test JuMP.value(x) ⊆ (1.99 .. 2.01)
       @test JuMP.value(y) ⊆ (1.99 .. 2.01)
-end        
+end
 
 @testset "Using Interval bound and contract algorithm for Constrained Optimisation" begin
       vars = ModelingToolkit.@variables x y
@@ -48,6 +48,12 @@ end
       (global_min, minimisers)= ibc_minimise(X->((x,y)= X;x^2 + y^2), IntervalBox(2..3, 3..4))
       @test global_min ⊆ 13 .. 13.01
       @test minimisers[1] ⊆ (2.0 .. 2.001) × (3.0 .. 3.001)
+end
+
+@testset "Optimising by Differencial Evolution" begin
+      (global_min, minimiser)= diffevol_minimise(X->((x,y)= X;x^2 + y^2), IntervalBox(2..3, 3..4), iterations = 40)
+      @test global_min ⊆ 13 .. 13.01
+      @test minimiser ⊆ (2.0 .. 2.001) × (3.0 .. 3.001)
 end
 
 
