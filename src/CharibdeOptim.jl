@@ -2,6 +2,7 @@ module CharibdeOptim
 
 export constraint, charibde_min, charibde_max, ibc_maximise, diffevol_maximise
 export ibc_minimise, diffevol_minimise
+export OptimisationProblem, solve!
 
 using IntervalArithmetic
 using Distributed
@@ -14,6 +15,15 @@ using MacroTools
 
 import Base: invokelatest, push!
 import ForwardDiff: gradient
+
+struct OptimisationProblem{N, T}
+    f::Function
+    X::IntervalBox{N, T}
+end
+
+function solve!(prob::OptimisationProblem)
+    ibc_minimise(prob.f, prob.X)
+end
 
 struct Constraint{T}
    bound::Interval{T}

@@ -71,7 +71,8 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChanne
         end
 
         A = -∞..global_min
-        X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
+        #X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
+        X = C(A, X)
         X_min = inf(f(X))
 
         if debug
