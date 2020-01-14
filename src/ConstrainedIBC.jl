@@ -3,7 +3,7 @@ function hc4(X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, tol=1e-5) 
     while true
         X_temp = X
         for i in 1:n
-            X = invokelatest(constraints[i].C,  constraints[i].bound, X)
+            X = constraints[i].C(constraints[i].bound, X)
         end
         if isempty(X) || sum(dist.(X, X_temp)) < tol
             break
@@ -25,7 +25,7 @@ function contraction(f::Function, C, global_min::Float64, X::IntervalBox{N,T}, c
     lb = -Inf
     while true
         X_temp = X
-        X = invokelatest(C, -Inf..global_min, X)
+        X = C(-Inf..global_min, X)
         lb = inf(f(X))
         constraints, X = hc4(X, constraints)
 
@@ -41,7 +41,7 @@ function generate_random_feasible_point(X::IntervalBox{N, T}, constraints::Vecto
     for i in 1:30
         point = [X[j].lo + (1-rand())*(X[j].hi - X[j].lo) for j in 1:length(X)]      # discover a random point in interval box X
         for j in 1:length(constraints)
-            if !(invokelatest(constraints[j].C, point) ⊆ constraints[j].bound)
+            if !(constraints[j].C(point) ⊆ constraints[j].bound)
                 break
             end
             if j == length(constraints)
@@ -80,19 +80,16 @@ end
 
 function check_feasiblity(point::SVector{N,T}, constraints::Vector{Constraint{T}}) where{N, T}
     for constraint in constraints
-        if !(invokelatest(constraint.C, point) ∈ constraint.bound)
+        if !(constraint.C(point) ∈ constraint.bound)
             return false
         end
     end
     return true
 end
 
-function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
+function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, C::BasicContractor; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
                diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), structure = SortedVector, debug = false, tol=1e-6, ibc_ind = true) where{N, T}
 
-    vars = [Variable(Symbol(:(x[$i])))() for i in 1:N]
-    g(x...) = f(x)
-    C = BasicContractor(vars, g)
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
     minimizers = IntervalBox{N,T}[]
@@ -216,8 +213,8 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Con
 end
 
 
-function ibc_maximise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
+function ibc_maximise(f::Function , X::IntervalBox{N,T}, constraints::Vector{Constraint{T}}, C::BasicContractor; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
                diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), structure = SortedVector, debug = false, tol=1e-6, ibc_ind = true) where{N, T}
-    bound, minimizer, info = ibc_minimise(x -> -f(x), X, constraints, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, tol = tol, ibc_ind = ibc_ind)
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, constraints, C, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, tol = tol, ibc_ind = ibc_ind)
     return -bound, minimizer, info
 end
