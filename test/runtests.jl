@@ -63,25 +63,6 @@ end
 end
 
 
-@testset "Using JuMP syntax by using only one worker " begin           #for using two workers just dont pass 'workers' arguments as its value is set to 2
-      model = Model(with_optimizer(CharibdeOptim.Optimizer, workers = 1))
-      @variable(model, 1<=x<=2)
-      @variable(model, 1<=y<=2)
-      @NLobjective(model, Min, x^2+y^2)
-      optimize!(model)
-
-      @test JuMP.termination_status(model) == MOI.OPTIMAL
-      @test JuMP.primal_status(model) == MOI.FEASIBLE_POINT
-      @test JuMP.objective_value(model) ≈ 2.0
-      @test JuMP.value(x) ≈ 1.0
-      @test JuMP.value(y) ≈ 1.0
-end
-
-
- # No need to add worker because a worker is already added while running testset "Using Charibde for Constrained Optimsation".
- # Otherwise we have to add a worker by using 'Distributed.addprocs(1)' and load the package on each worker
- # by '@everywhere using CharibdeOptim'.
-
 @testset "Optimising by Charibde (A hybrid approach) using 2 workers" begin
 
       prob = OptimisationProblem(X->((x,y)=X;x^3 + 2y + 5), IntervalBox(2..4, 2..3))
@@ -96,38 +77,6 @@ end
 
 end
 
-
-@testset "Optimising difficult problem using JuMP" begin
-      model = Model(with_optimizer(CharibdeOptim.Optimizer))
-
-      @variable(model, 2 <= x1 <= 3)
-      @variable(model, 3 <= x2 <= 4)
-      @variable(model, 9 <= x3 <= 14)
-      @variable(model, 2 <= x4 <= 3)
-      @variable(model, 3 <= x5 <= 4)
-      @variable(model, 9 <= x6 <= 14)
-      @variable(model, 2 <= x7 <= 3)
-      @variable(model, 3 <= x8 <= 4)
-      @variable(model, 9 <= x9 <= 14)
-
-      @NLobjective(model, Min, x1^2 + x2^2 + x3^4 - x4^7 - 200x5 - x6^5 - x7^9 + x8^5 - 8x9^3)
-
-      optimize!(model)
-
-      @test JuMP.termination_status(model) == MOI.OPTIMAL
-      @test JuMP.primal_status(model) == MOI.FEASIBLE_POINT
-      @test JuMP.objective_value(model) ≈ -575629.0
-      @test JuMP.value(x1) ⊆ 1.99 .. 2.01
-      @test JuMP.value(x2) ⊆ 2.99 .. 3.01
-      @test JuMP.value(x3) ⊆ 8.99 .. 9.01
-      @test JuMP.value(x4) ⊆ 2.99 .. 3.01
-      @test JuMP.value(x5) ⊆ 3.99 .. 4.01
-      @test JuMP.value(x6) ⊆ 13.99 .. 14.01
-      @test JuMP.value(x7) ⊆ 2.99 .. 3.01
-      @test JuMP.value(x8) ⊆ 2.99 .. 3.01
-      @test JuMP.value(x9) ⊆ 13.99 .. 14.01
-end
-
 @testset "Optimising difficult problems using Charibde" begin
       f = X->((x1,x2,x3,x4,x5,x6,x7,x8,x9)=X;x1^2 + x2^2 + x3^4 - x4^7 - 200x5 - x6^5 - x7^9 + x8^5 - 8x9^3)
       X = IntervalBox(2..3, 3..4, 9..14, 2..3, 3..4, 9..14, 2..3, 3..4, 9..14)
@@ -138,4 +87,8 @@ end
       @test global_min ⊆ -575630 .. -575628
       @test minimisers[1] ⊆ (1.99 .. 2.01) × (2.99 .. 3.01) × (8.99 .. 9.01) × (2.99 .. 3.01) × (3.99 .. 4.01) × (13.99 .. 14.01) × (2.99 .. 3.01) × (2.99 .. 3.01) × (13.99 .. 14.01)
 
+end
+
+@testset "Optimising using JuMP syntax" begin
+      include("JuMP_test.jl")
 end

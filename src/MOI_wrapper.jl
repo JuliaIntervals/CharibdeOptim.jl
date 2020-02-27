@@ -291,7 +291,18 @@ function ibc_worker(model::Optimizer, search_space::IntervalBox{N,T}, debug::Boo
 
 end
 
-function optimize_serial(model::Optimizer, obj_func::Function, search_space::IntervalBox{N,T}) where{N,T}
+function optimize_serial(model::Optimizer, search_space::IntervalBox{N,T}) where{N,T}
+
+    eval_expr = nothing
+    if model.nlp_data.has_objective
+        MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
+        expr = MOI.objective_expr(model.nlp_data.evaluator)
+        expr = substitute_variables(expr)
+        eval_expr = eval(:(x -> $(expr)))
+    end
+
+    obj_func(x) = eval_objective(model, eval_expr, x)
+
     ch_master_to_slave = Channel{Tuple{IntervalBox{N, T}, T}}(1)
     ch_slave_to_master = Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(1)
 
@@ -317,36 +328,26 @@ function optimize_serial(model::Optimizer, obj_func::Function, search_space::Int
 
 end
 
-function optimize_parallel(model::Optimizer, obj_func::Function, search_space::IntervalBox{N,T}) where{N,T}
+function optimize_parallel(model::Optimizer, search_space::IntervalBox{N,T}) where{N,T}
 
     ch_master_to_slave = RemoteChannel(()->Channel{Tuple{IntervalBox{N, T}, T}}(1))
     ch_slave_to_master = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(1))
 
     r1 = remotecall(CharibdeOptim.diffevol_worker, model.workers[1], model, search_space, ch_master_to_slave, ch_slave_to_master)
     r2 = remotecall(CharibdeOptim.ibc_worker, model.workers[2], model, search_space, model.debug, ch_master_to_slave, ch_slave_to_master, model.tol)
-    model.result = fetch(r1)
+    model.result = fetch(r2)
 end
 
 
 function MOI.optimize!(model::Optimizer)
 
-    eval_expr = nothing
-    if model.nlp_data.has_objective
-        MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
-        expr = MOI.objective_expr(model.nlp_data.evaluator)
-        expr = substitute_variables(expr)
-        eval_expr = eval(:(x -> $(expr)))
-    end
-
-    obj_func(x) = eval_objective(model, eval_expr, x)
-
     X = [Interval(var.lower_bound, var.upper_bound) for var in model.variable_info]
     search_space = IntervalBox(X...)
 
     if model.workers[1] != 1
-        optimize_parallel(model, obj_func, search_space)
+        optimize_parallel(model, search_space)
     else
-        optimize_serial(model, obj_func, search_space)
+        optimize_serial(model, search_space)
     end
 end
 
