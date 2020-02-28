@@ -2,8 +2,8 @@
 diffevol_minimise is a function which the implementation of DifferentialEvolution algorithm is designed in such a way so that it can only be used by charibde_min on different processor.
 It can be use for both constrained as well as for unconstrained optimisation
 """
-function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::Union{Channel{Tuple{IntervalBox{N,T}, T}}, RemoteChannel{Channel{Tuple{IntervalBox{N, T}, T}}} },
-               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}}}; np = 10*N, debug = false ) where{N, T}
+function diffevol_minimise(f::Function, X::IntervalBox{N, T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)),
+               diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), np = 10*N, debug = false, de_ind = true, iterations = 20) where{N, T}
 
    pop = SVector{N, T}[]
 
@@ -15,6 +15,7 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::Union{Ch
    global_min = Inf
    x_best = pop[np]
 
+   num_of_iterations = 0
    while true
 
       fac = 2*rand()
@@ -24,19 +25,21 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::Union{Ch
 
       temp = global_min
 
-      if isready(diffevol_chnl)
-         (x_best, temp, new_box) = take!(diffevol_chnl)  # Receiveing best individual from diffevol_minimise
-         if debug
-            println("Box recevied from IBC: ", (x_best, temp))
+      if !de_ind
+         if isready(diffevol_chnl)
+            (x_best, temp, new_box) = take!(diffevol_chnl)  # Receiveing best individual from diffevol_minimise
+            if debug
+               println("Box recevied from IBC: ", (x_best, temp))
+            end
+            if temp == Inf
+               break
+            end
+            if new_box != nothing
+               X = new_box
+            end
+            push!(pop, x_best)
+            np = np + 1
          end
-         if temp == Inf
-            break
-         end
-         if new_box != nothing
-            X = new_box
-         end
-         push!(pop, x_best)
-         np = np + 1
       end
 
       for i in 1:np
@@ -69,19 +72,29 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, ibc_chnl::Union{Ch
 
       if global_min < temp
          best_box = (IntervalBox(Interval.(x_best)), global_min)
-         put!(ibc_chnl, best_box)   #sending the best individual to ibc_minimise
+         if !de_ind
+            put!(ibc_chnl, best_box)   #sending the best individual to ibc_minimise
+         end
          if debug
             println("Box send to IBC: ", best_box)
          end
       end
-
       pop = pop_new
+
+      num_of_iterations = num_of_iterations + 1
+
+      if de_ind
+         if num_of_iterations == iterations
+            return (global_min, IntervalBox(Interval.(x_best)))
+         end
+      end
+
    end
-   return
+
 end
 
-function diffevol_maximise(f::Function, X::IntervalBox{N, T}, ibc_chnl::Union{Channel{Tuple{IntervalBox{N,T}, T}}, RemoteChannel{Channel{Tuple{IntervalBox{N,T}, T}}} },
-               diffevol_chnl::Union{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}, RemoteChannel{Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}}}; np = 10*N, debug = false ) where{N, T}
+function diffevol_maximise(f::Function, X::IntervalBox{N, T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)),
+               diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), np = 10*N, debug = false, de_ind = true, iterations = 20) where{N, T}
 
-            diffevol_minimise(x -> -f(x), X, ibc_chnl, diffevol_chnl, np = np, debug = debug)
-         end
+   diffevol_minimise(x -> -f(x), X, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, np = np, debug = debug, de_ind = de_ind, iterations = iterations)
+end

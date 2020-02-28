@@ -20,7 +20,8 @@ For Constrained Optimisation:
 ibc_minimise/ibc_maximise find the global minimum/maximum value of the function in given search space by using Interval Bound & Contract(IBC) algorithm
 ```
 """
-function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, tol=1e-6 ) where{N, T}
+function ibc_minimise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
+               diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), debug = false, structure = SortedVector, tol=1e-6, ibc_ind = true) where{N, T}
 
     vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
     g(x...) = f(x)
@@ -39,14 +40,16 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
         info.iterations= info.iterations + 1
 
-        if isready(ibc_chnl)
-            from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
-            if debug
-                println("Box recevied from DifferentialEvolution: ", from_diff)
+        if !ibc_ind
+            if isready(ibc_chnl)
+                from_diff = take!(ibc_chnl)     # Receiving best individual from ibc_minimise
+                if debug
+                    println("Box recevied from DifferentialEvolution: ", from_diff)
+                end
+                global_min = min(from_diff[2], global_min)
+                info.de_to_ibc = info.de_to_ibc + 1
             end
-            global_min = min(from_diff[2], global_min)
-            info.de_to_ibc = info.de_to_ibc + 1
-        end
+       end
 
         (X, X_min) = popfirst!(working)
 
@@ -85,7 +88,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
         if m < global_min
             global_min = m
             x_best = SVector(mid(X))
-            if diffevol_chnl != Nothing
+            if !ibc_ind
                 if debug
                     println("Box send to DifferentialEvolution: ", x_best )
                 end
@@ -115,7 +118,7 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
         println("IBC search is ended")
     end
 
-    if diffevol_chnl != Nothing
+    if !ibc_ind
         if isready(diffevol_chnl)
             take!(diffevol_chnl)
             put!(diffevol_chnl,(SVector(mid(X)), Inf, nothing) )
@@ -125,10 +128,9 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
         if debug
             println("DifferentialEvolution is also terminated")
         end
-    end
-
-    if isready(ibc_chnl)
-        take!(ibc_chnl)
+        if isready(ibc_chnl)
+            take!(ibc_chnl)
+        end
     end
 
     lower_bound = minimum(inf.(f.(minimizers)))
@@ -138,7 +140,8 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; debug = false,  ibc_chn
 
 end
 
-function ibc_maximise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, Float64}}(0)), diffevol_chnl = Nothing, structure = SortedVector, debug = false, tol=1e-6) where{N, T}
-    bound, minimizer, info = ibc_minimise(x -> -f(x), X, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, tol = tol)
+function ibc_maximise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
+               diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), debug = false, structure = SortedVector, tol=1e-6, ibc_ind = true) where{N, T}
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, structure = structure, tol = tol, ibc_ind = true)
     return -bound, minimizer, info
 end

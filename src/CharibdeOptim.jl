@@ -73,14 +73,14 @@ function charibde_min(f::Function, X::IntervalBox{N,T}; workers = 2, tol = 1e-6,
 
         (chnl1, chnl2) = create_channels(X, workers)                     #IBC recieve element from chnl1 and DiffEvolution from chnl2
 
-        r1 = remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2, np = np)
-        r2 = remotecall(ibc_minimise, worker_ids[2], f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        r1 = remotecall(diffevol_minimise, worker_ids[1], f, X, chnl1, chnl2, np = np, de_ind = false)
+        r2 = remotecall(ibc_minimise, worker_ids[2], f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug, ibc_ind = false)
         return fetch(r2)
     else
         (chnl1, chnl2) = create_channels(X, workers)
 
-        r1 = @async diffevol_minimise(f, X, chnl1, chnl2, np = np)
-        r2 = @async ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        r1 = @async diffevol_minimise(f, X, chnl1, chnl2, np = np, de_ind = false)
+        r2 = @async ibc_minimise(f, X, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug, ibc_ind = false)
         return fetch(r2)
     end
 end
@@ -96,14 +96,14 @@ function charibde_min(f::Function, X::IntervalBox{N,T}, constraints::Vector{Cons
 
         (chnl1, chnl2) = create_channels(X, workers)
 
-        r1 = remotecall(diffevol_minimise, worker_ids[1], f, X, constraints, chnl1, chnl2, np = np)
-        r2 = remotecall(ibc_minimise, worker_ids[2], f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug)
+        r1 = remotecall(diffevol_minimise, worker_ids[1], f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, np = np, de_ind = false)
+        r2 = remotecall(ibc_minimise, worker_ids[2], f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol = tol, debug = debug, ibc_ind = false)
         return fetch(r2)
     else
         (chnl1, chnl2) = create_channels(X, workers)
 
-        r1 = @async diffevol_minimise(f, X, constraints, chnl1, chnl2, np = np)
-        r2 = @async ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol= tol, debug = debug)
+        r1 = @async diffevol_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, np = np, de_ind = false)
+        r2 = @async ibc_minimise(f, X, constraints, ibc_chnl = chnl1, diffevol_chnl = chnl2, tol= tol, debug = debug, ibc_ind = false)
         return fetch(r2)
     end
 end
