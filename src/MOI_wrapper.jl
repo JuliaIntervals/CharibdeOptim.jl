@@ -243,21 +243,19 @@ function diffevol_worker(model::Optimizer, search_space::IntervalBox{N,T}, ch_ma
     num_constraints = length(model.nlp_data.constraint_bounds)
 
     if num_constraints == 0
-        if model.sense == MOI.MIN_SENSE
-            diffevol_minimise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-        else
-            @assert sense == MOI.MAX_SENSE
-            diffevol_maximise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-        end
+        prob = OptimisationProblem(obj_func, search_space)
     else
         constraints = construct_constraints(model, num_constraints)
-        if model.sense == MOI.MIN_SENSE
-            diffevol_minimise(obj_func, search_space, constraints, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-        else
-            @assert model.sense == MOI.MAX_SENSE
-            diffevol_maximise(obj_func, search_space, constraints, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-        end
+        prob = ConstrainedOptimisationProblem(obj_func, search_space, constraints)
     end
+
+    if model.sense == MOI.MIN_SENSE
+        minimise_by_diffevol(prob, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
+    else
+        @assert model.sense == MOI.MAX_SENSE
+        maximise_by_diffevol(prob, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
+    end
+
 end
 
 
@@ -276,59 +274,61 @@ function ibc_worker(model::Optimizer, search_space::IntervalBox{N,T}, debug::Boo
     num_constraints = length(model.nlp_data.constraint_bounds)
 
     if num_constraints == 0
-        if model.sense == MOI.MIN_SENSE
-            ibc_minimise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol, ibc_ind = false)
-        else
-            @assert sense == MOI.MAX_SENSE
-            ibc_maximise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol, ibc_ind = false)
-        end
+
+        prob = OptimisationProblem(obj_func, search_space)
     else
         constraints = construct_constraints(model, num_constraints)
-        if model.sense == MOI.MIN_SENSE
-            ibc_minimise(obj_func, search_space, constraints, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol, ibc_ind = false)
-        else
-            @assert model.sense == MOI.MAX_SENSE
-            ibc_maximise(obj_func, search_space, constraints, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol, ibc_ind = false)
-        end
+
+        prob = ConstrainedOptimisationProblem(obj_func, search_space, constraints)
+    end
+
+    if model.sense == MOI.MIN_SENSE
+        minimise_by_ibc(prob, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol, ibc_ind = false)
+    else
+        @assert model.sense == MOI.MAX_SENSE
+        maximise_by_ibc(prob, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, debug = debug, tol = tol, ibc_ind = false)
     end
 
 end
 
-function optimize_serial(model::Optimizer, obj_func::Function, search_space::IntervalBox{N,T}) where{N,T}
+function optimize_serial(model::Optimizer, search_space::IntervalBox{N,T}) where{N,T}
+
+    eval_expr = nothing
+    if model.nlp_data.has_objective
+        MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
+        expr = MOI.objective_expr(model.nlp_data.evaluator)
+        expr = substitute_variables(expr)
+        eval_expr = eval(:(x -> $(expr)))
+    end
+
+    obj_func(x) = eval_objective(model, eval_expr, x)
+
     ch_master_to_slave = Channel{Tuple{IntervalBox{N, T}, T}}(1)
     ch_slave_to_master = Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(1)
 
     num_constraints = length(model.nlp_data.constraint_bounds)
 
     if num_constraints == 0
-        if model.sense == MOI.MIN_SENSE
-            r1 = @async diffevol_minimise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-            r2 = @async ibc_minimise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol, ibc_ind = false)
-            model.result = fetch(r2)
-        else
-            @assert model.sense == MOI.MAX_SENSE
-            r1 = @async diffevol_maximise(obj_func, search_space, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-            r2 = @async ibc_maximise(obj_func, search_space, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol, ibc_ind = false)
-            model.result = fetch(r2)
-        end
+        prob = OptimisationProblem(obj_func, search_space)
     else
         constraints = construct_constraints(model, num_constraints)
-        if model.sense == MOI.MIN_SENSE
-            r1 = @async diffevol_minimise(obj_func, search_space, constraints, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-            r2 = @async ibc_minimise(obj_func, search_space, constraints, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol, ibc_ind = false)
-            model.result = fetch(r2)
-
-        else
-            @assert model.sense == MOI.MAX_SENSE
-            r1 = @async diffevol_maximise(obj_func, search_space, constraints, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
-            r2 = @async ibc_maximise(obj_func, search_space, constraints, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol, ibc_ind = false)
-            model.result = fetch(r2)
-        end
-
+        prob = ConstrainedOptimationProblem(obj_func, search_space, constraints)
     end
+
+    if model.sense == MOI.MIN_SENSE
+        r1 = @async minimise_by_diffevol(prob, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
+        r2 = @async minimise_by_ibc(prob, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol, ibc_ind = false)
+        model.result = fetch(r2)
+    else
+        @assert model.sense == MOI.MAX_SENSE
+        r1 = @async maximise_by_diffevol(prob, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, np = model.np, de_ind = false)
+        r2 = @async maximise_by_ibc(prob, debug = model.debug, ibc_chnl = ch_master_to_slave, diffevol_chnl = ch_slave_to_master, tol = model.tol, ibc_ind = false)
+        model.result = fetch(r2)
+    end
+
 end
 
-function optimize_parallel(model::Optimizer, obj_func::Function, search_space::IntervalBox{N,T}) where{N,T}
+function optimize_parallel(model::Optimizer, search_space::IntervalBox{N,T}) where{N,T}
 
     ch_master_to_slave = RemoteChannel(()->Channel{Tuple{IntervalBox{N, T}, T}}(1))
     ch_slave_to_master = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(1))
@@ -341,23 +341,13 @@ end
 
 function MOI.optimize!(model::Optimizer)
 
-    eval_expr = nothing
-    if model.nlp_data.has_objective
-        MOI.initialize(model.nlp_data.evaluator, [:ExprGraph])
-        expr = MOI.objective_expr(model.nlp_data.evaluator)
-        expr = substitute_variables(expr)
-        eval_expr = eval(:(x -> $(expr)))
-    end
-
-    obj_func(x) = eval_objective(model, eval_expr, x)
-
     X = [Interval(var.lower_bound, var.upper_bound) for var in model.variable_info]
     search_space = IntervalBox(X...)
 
     if model.workers[1] != 1
-        optimize_parallel(model, obj_func, search_space)
+        optimize_parallel(model, search_space)
     else
-        optimize_serial(model, obj_func, search_space)
+        optimize_serial(model, search_space)
     end
 end
 

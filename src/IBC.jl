@@ -1,31 +1,8 @@
-"""Usage:
-```
-For Unconstrained Optimsation:
-  f = X->((x,y)=X;x^3 + 2y + 5)
-  A = IntervalBox(2..4, 2..3)
-  (global_min, minimisers, info) = ibc_minimise(f, A)
-  (global_max, maximisers, info) = ibc_maximise(f, A)
 
-For Constrained Optimisation:
-  f = X->((x,y)=X;-(x-4)^2-(y-4)^2)
-  A = IntervalBox(-4..4, -4..4)
-
-  vars = ModelingToolkit.@variables x y
-  C1 = Constraint(vars, x+y, -Inf..4)
-  C2 = Constraint(vars, x+3y, -Inf..9)
-
-  (global_min, minimisers, info) = ibc_minimise(f, A, [C1, C2])
-  (global_max, maximisers, info) = ibc_maximise(f, A, [C1, C2])
-
-ibc_minimise/ibc_maximise find the global minimum/maximum value of the function in given search space by using Interval Bound & Contract(IBC) algorithm
-```
-"""
-function ibc_minimise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
+function ibc_minimise(f::Function , X::IntervalBox{N,T}, C::BasicContractor; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
                diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), debug = false, structure = SortedVector, tol=1e-6, ibc_ind = true) where{N, T}
 
-    vars = [Variable(Symbol("x",i))() for i in 1:length(X)]
-    g(x...) = f(x)
-    C = BasicContractor(vars, g)
+
 
 
     working = structure([(X, inf(f(X)))], x->x[2]) # list of boxes with corresponding lower bound, arranged according to selected structure :
@@ -71,7 +48,8 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChanne
         end
 
         A = -∞..global_min
-        X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
+        #X = invokelatest(C, A, X)                        # Contracting the box by constraint f(X) < globla_min
+        X = C(A, X)
         X_min = inf(f(X))
 
         if debug
@@ -140,8 +118,8 @@ function ibc_minimise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChanne
 
 end
 
-function ibc_maximise(f::Function , X::IntervalBox{N,T}; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
+function ibc_maximise(f::Function , X::IntervalBox{N,T}, C::BasicContractor; ibc_chnl = RemoteChannel(()->Channel{Tuple{IntervalBox{N,T}, T}}(0)),
                diffevol_chnl = RemoteChannel(()->Channel{Tuple{SVector{N, T}, T, Union{Nothing, IntervalBox{N, T}}}}(0)), debug = false, structure = SortedVector, tol=1e-6, ibc_ind = true) where{N, T}
-    bound, minimizer, info = ibc_minimise(x -> -f(x), X, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, structure = structure, tol = tol, ibc_ind = true)
+    bound, minimizer, info = ibc_minimise(x -> -f(x), X, C, ibc_chnl = ibc_chnl, diffevol_chnl = diffevol_chnl, debug = debug, structure = structure, tol = tol, ibc_ind = true)
     return -bound, minimizer, info
 end

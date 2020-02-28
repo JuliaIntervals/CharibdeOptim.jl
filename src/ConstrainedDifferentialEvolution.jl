@@ -58,10 +58,10 @@ function diffevol_minimise(f::Function, X::IntervalBox{N, T}, constraints::Vecto
          (c1, c2) = (0, 0)
 
          for constraint in constraints
-            if invokelatest(constraint.C, m) ∈ constraint.bound
+            if constraint.C(m) ∈ constraint.bound
                c1 = c1 + 1
             end
-            if invokelatest(constraint.C, pop[i]) ∈ constraint.bound
+            if constraint.C(pop[i]) ∈ constraint.bound
                c2 = c2 + 1
             end
          end
