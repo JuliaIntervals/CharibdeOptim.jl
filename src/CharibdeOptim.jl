@@ -17,11 +17,11 @@ import ForwardDiff: gradient
 
 struct Constraint{T}
    bound::Interval{T}
-   C::Contractor
+   C::BasicContractor
 end
 
 function constraint(vars, constraint_expr::Operation, bound::Interval{T}; epsilon = 1e-4) where{T}
-   C = Contractor(vars, constraint_expr)
+   C = BasicContractor(vars, constraint_expr)
    if diam(bound) == 0.0
        bound = Interval(bound.lo - epsilon, bound.hi + epsilon)
    end
